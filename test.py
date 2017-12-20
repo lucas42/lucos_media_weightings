@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/local/bin/python3
 
 # Unit under test
 from func import getWeighting
@@ -102,11 +102,11 @@ for case in testcases:
 
 	actual = getWeighting(case['payload'], isXmas = case['isXmas'], isEurovision = case['isEurovision'], isHalloween = case['isHalloween'])
 	if (round(actual, 5) != round(case['expected'], 5)): # round to avoid irrelevant floating point nonsense
-		print "Failed \"" + case['comment'] + "\".  Returned " + str(actual) + ", expected " + str(case['expected'])
+		print("Failed \"" + case['comment'] + "\".  Returned " + str(actual) + ", expected " + str(case['expected']))
 		failures += 1
 
 if (failures > 0):
-	print str(failures) + " failures in " + str(len(testcases)) + " cases."
+	print(str(failures) + " failures in " + str(len(testcases)) + " cases.")
 	exit(1)
 else:
-	print "All " + str(len(testcases)) + " cases passed."
+	print("All " + str(len(testcases)) + " cases passed.")
