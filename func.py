@@ -21,5 +21,7 @@ def getWeighting(track, isXmas = False, isHalloween = False, isEurovision = Fals
 	if 'format' in track['tags']:
 		if track['tags']['format'] == "speech":
 			weighting = 0.5
+		if track['tags']['format'] == "fx":
+			weighting = 0.5
 
 	return weighting

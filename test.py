@@ -39,6 +39,17 @@ testcases = [
 		'expected': 0.5,
 	},
 	{
+		'comment': "Sound effects are rated lower",
+		'payload': {
+			'url': "http://example.com/bang.mp3",
+			'tags': {
+				'title': 'Explosion', 
+				'format': 'fx',
+			}
+		},
+		'expected': 0.5,
+	},
+	{
 		'comment': "Christmas music is rare when not Christmas",
 		'payload': {
 			'url': "http://example.com/xmas.mp3",
