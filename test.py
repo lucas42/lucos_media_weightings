@@ -50,6 +50,17 @@ testcases = [
 		'expected': 0.5,
 	},
 	{
+		'comment': "Podcasts are rated lower",
+		'payload': {
+			'url': "http://example.com/podcast-episode3.mp3",
+			'tags': {
+				'title': 'Episode 3', 
+				'format': 'podcast',
+			}
+		},
+		'expected': 0.5,
+	},
+	{
 		'comment': "Christmas music is rare when not Christmas",
 		'payload': {
 			'url': "http://example.com/xmas.mp3",
