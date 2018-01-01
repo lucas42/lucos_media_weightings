@@ -12,7 +12,7 @@ while True:
 		break
 
 	for track in tracks:
-		weighting = getWeighting(track, isXmas = True)
+		weighting = getWeighting(track, isXmas = False)
 		oldweighting = track['weighting']
 		if (oldweighting != weighting):
 			print(track['url'] + " " + str(oldweighting) + " => "+ str(weighting))
