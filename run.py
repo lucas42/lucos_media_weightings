@@ -20,7 +20,10 @@ while True:
 
 	for track in tracks:
 		weighting = getWeighting(track, isXmas = isDecember, isHalloween = isLateOctober)
-		oldweighting = track['weighting']
+		if ('weighting' in track):
+			oldweighting = track['weighting']
+		else:
+			oldweighting = "Not set"
 		if (oldweighting != weighting):
 			print("\033[1mWeighting update: " + track['url'] + " " + str(oldweighting) + " => " + str(weighting)+ "\033[0m")
 			if verbose:
