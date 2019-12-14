@@ -5,6 +5,8 @@ verbose = False
 if len(sys.argv) < 2:
 	exit("Please specify API url")
 apiurl = sys.argv[1]
+if (apiurl.endswith("/")):
+	exit("Don't include a trailing slash in the API url")
 page = 0
 
 today = datetime.date.today()
