@@ -1,12 +1,12 @@
 #! /usr/local/bin/python3
-import requests, json, sys, datetime
+import requests, json, sys, datetime, os
 from func import getWeighting
 verbose = False
-if len(sys.argv) < 2:
-	exit("Please specify API url")
-apiurl = sys.argv[1]
+if not os.environ.get("MEDIA_API"):
+	sys.exit("\033[91mMEDIA_API not set\033[0m")
+apiurl = os.environ.get("MEDIA_API")
 if (apiurl.endswith("/")):
-	exit("Don't include a trailing slash in the API url")
+	sys.exit("\033[91mDon't include a trailing slash in the API url\033[0m")
 page = 0
 
 today = datetime.date.today()
