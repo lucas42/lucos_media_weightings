@@ -7,7 +7,7 @@ jobs:
       - checkout
       - run:
           name: Install Dependencies
-          command: pip install
+          command: pipenv install
       - run:
           name: Run Tests
           command: ./test.py
