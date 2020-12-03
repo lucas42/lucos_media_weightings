@@ -39,3 +39,10 @@ while True:
 				print ("\033[91m** Error ** HTTP Status code "+str(result.status_code)+" returned by API: " +  result.text + "\033[0m")
 		else:
 			print(track['url'] + " - still " + str(weighting))
+
+# Save the current time as a global in the media API
+timestampresult = requests.put(apiurl+"/globals/latest_weighting-timestamp", data=datetime.datetime.utcnow().isoformat().encode('utf-8'), allow_redirects=False)
+if timestampresult.ok:
+	print ("\033[92mLast weighting timestamp updated: " +  timestampresult.text + "\033[0m")
+else:
+	print ("\033[91m** Error ** HTTP Status code "+str(timestampresult.status_code)+" returned by API: " +  timestampresult.text + "\033[0m")
