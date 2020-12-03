@@ -4,7 +4,7 @@ WORKDIR /usr/src/app
 
 RUN apt-get update && apt-get install -y pipenv cron
 
-RUN echo "40 17 * * * root cd `pwd` && pipenv run python -u run.py >> /var/log/cron.log 2>&1" > /etc/cron.d/weightings
+RUN echo "20 18 * * * root cd `pwd` && pipenv run python -u run.py >> /var/log/cron.log 2>&1" > /etc/cron.d/weightings
 COPY cron.sh .
 
 COPY Pipfile* ./
