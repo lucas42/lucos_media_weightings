@@ -13,6 +13,9 @@ today = datetime.date.today()
 isDecember = (today.month == 12)
 isLateOctober = (today.month == 10 and today.day > 25)
 
+loganne_result = requests.post("https://loganne.l42.eu/events", json={"source":"lucos_media_weightings","type":"weightings","humanReadable":"Calculate weightings for all media tracks"}, allow_redirects=False)
+if not loganne_result:
+	print ("\033[91m** Error ** Call to Loganne failed with "+str(loganne_result.status_code)+" response: " +  loganne_result.text + "\033[0m")
 print ("\033[0mChecking media library for weightings which have changed...")
 while True:
 	page += 1
