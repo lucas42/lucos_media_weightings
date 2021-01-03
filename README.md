@@ -35,7 +35,7 @@ which will check various calls to the getWeighting() function
 
 Run `pipenv install` to setup
 
-`pipenv run python import.py`
+`pipenv run python run.py`
 
 
 ## Environment Variables
