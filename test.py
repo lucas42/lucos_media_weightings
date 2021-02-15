@@ -28,6 +28,18 @@ testcases = [
 		'expected': 7.1,
 	},
 	{
+		'comment': "Lowest ratings are rated zero",
+		'payload': {
+			'url': "http://example.com/random-south-park-track",
+			'tags': {
+				'title': 'Singing rude stuff in silly voices',
+				'artist': 'South Park',
+				'rating': "0.4",
+			}
+		},
+		'expected': 0,
+	},
+	{
 		'comment': "Speech tracks are rated zero",
 		'payload': {
 			'tags': {

@@ -2,7 +2,11 @@
 def getWeighting(track, isXmas = False, isHalloween = False, isEurovision = False):
 	weighting = 5
 	if 'rating' in track['tags']:
-		weighting = float(track['tags']['rating'])
+		rating = float(track['tags']['rating'])
+		if rating < 2:
+			weighting = 0
+		else:
+			weighting = rating
 
 	if 'event' in track['tags']:
 		event = track['tags']['event'].lower()
