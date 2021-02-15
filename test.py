@@ -28,7 +28,7 @@ testcases = [
 		'expected': 7.1,
 	},
 	{
-		'comment': "Speech tracks are rated lower",
+		'comment': "Speech tracks are rated zero",
 		'payload': {
 			'tags': {
 				'title': 'Orson Welles, H.G.Wells - War Of The Worlds (The Original Broadcast Oct 30, 193', 
@@ -36,10 +36,10 @@ testcases = [
 				'artist': 'Orson Welles',
 			}
 		},
-		'expected': 0.5,
+		'expected': 0,
 	},
 	{
-		'comment': "Sound effects are rated lower",
+		'comment': "Sound effects are rated zero",
 		'payload': {
 			'url': "http://example.com/bang.mp3",
 			'tags': {
@@ -47,10 +47,10 @@ testcases = [
 				'format': 'fx',
 			}
 		},
-		'expected': 0.5,
+		'expected': 0,
 	},
 	{
-		'comment': "Podcasts are rated lower",
+		'comment': "Podcasts are rated zero",
 		'payload': {
 			'url': "http://example.com/podcast-episode3.mp3",
 			'tags': {
@@ -58,7 +58,7 @@ testcases = [
 				'format': 'podcast',
 			}
 		},
-		'expected': 0.5,
+		'expected': 0,
 	},
 	{
 		'comment': "Christmas music is rare when not Christmas",
