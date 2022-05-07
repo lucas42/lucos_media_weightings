@@ -127,6 +127,58 @@ testcases = [
 		'isEurovision': True,
 		'expected': 920,
 	},
+	{
+		'comment': "New music added in the past 2 weeks is more likely",
+		'payload': {
+			'url': "http://example.com/new.mp3",
+			'tags': {
+				'title': 'New Music just dropped',
+				'rating': "7",
+				'added': "2030-02-01T23:00",
+			}
+		},
+		'datetime': "2030-02-10T12:30",
+		'expected': 70,
+	},
+	{
+		'comment': "Brand new music added in the past 24 hours is very likely",
+		'payload': {
+			'url': "http://example.com/brand-new.mp3",
+			'tags': {
+				'title': 'Brand New Music just dropped',
+				'rating': "8",
+				'added': "2020-03-04T21:21",
+			}
+		},
+		'datetime': "2020-03-05T12:30",
+		'expected': 800,
+	},
+	{
+		'comment': "Music added more than a fortnight ago is same as default",
+		'payload': {
+			'url': "http://example.com/not-new.mp3",
+			'tags': {
+				'title': 'Older Music',
+				'rating': "8.4",
+				'added': "2025-08-08T21:21",
+			}
+		},
+		'datetime': "2025-09-05T12:30",
+		'expected': 8.4,
+	},
+	{
+		'comment': "Invalid added tag is ignored",
+		'payload': {
+			'url': "http://example.com/song.mp3",
+			'tags': {
+				'title': 'Music of Unknown Age',
+				'rating': "7.7",
+				'added': "1209238492842098",
+			}
+		},
+		'datetime': "1990-09-05T12:30",
+		'expected': 7.7,
+	},
 ]
 failures = 0
 for case in testcases:
@@ -139,11 +191,11 @@ for case in testcases:
 
 	actual = getWeighting(case['payload'], currentDateTime, isEurovision = case['isEurovision'], )
 	if (round(actual, 5) != round(case['expected'], 5)): # round to avoid irrelevant floating point nonsense
-		print("Failed \"" + case['comment'] + "\".  Returned " + str(actual) + ", expected " + str(case['expected']))
+		print("\033[91mFailed\033[0m \"" + case['comment'] + "\".  Returned \033[91m" + str(actual) + "\033[0m, expected " + str(case['expected']))
 		failures += 1
 
 if (failures > 0):
-	print(str(failures) + " failures in " + str(len(testcases)) + " cases.")
+	print("\033[91m"+str(failures) + " failures\033[0m in " + str(len(testcases)) + " cases.")
 	exit(1)
 else:
 	print("All " + str(len(testcases)) + " cases passed.")

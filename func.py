@@ -1,3 +1,4 @@
+import datetime
 
 def getWeighting(track, currentDateTime, isEurovision = False):
 	isXmas = (currentDateTime.month == 12)
@@ -23,6 +24,19 @@ def getWeighting(track, currentDateTime, isEurovision = False):
 		elif event == "eurovision":
 			if isEurovision:
 				weighting *= 100
+
+	if 'added' in track['tags']:
+		try:
+			dateTimeAdded = datetime.datetime.fromisoformat(track['tags']['added'])
+			delta = currentDateTime - dateTimeAdded
+			if delta.days < 1:
+				weighting *= 100
+			elif delta.days < 14:
+				weighting *= 10
+
+		# Ignore invalid dates in 'added' tag
+		except Exception:
+			pass
 
 	if 'format' in track['tags']:
 		if track['tags']['format'] == "speech":
