@@ -1,4 +1,5 @@
 #! /usr/local/bin/python3
+import datetime
 
 # Unit under test
 from func import getWeighting
@@ -83,7 +84,7 @@ testcases = [
 				'event': 'xmas'
 			}
 		},
-		'isXmas': False,
+		'datetime': "2050-09-29",
 		'expected': 0.082,
 	},
 	{
@@ -97,11 +98,11 @@ testcases = [
 				'event': 'xmas',
 			}
 		},
-		'isXmas': True,
+		'datetime': "2012-12-02",
 		'expected': 82,
 	},
 	{
-		'comment': "Hallowe'en music is more likely during Hallowe'en",
+		'comment': "Hallowe'en music is more likely at end of October",
 		'payload': {
 			'url': "http://example.com/scary.mp3",
 			'tags': {
@@ -110,7 +111,7 @@ testcases = [
 				'event': "Hallowe'en",
 			}
 		},
-		'isHalloween': True,
+		'datetime': "1998-10-30",
 		'expected': 325,
 	},
 	{
@@ -130,11 +131,13 @@ testcases = [
 failures = 0
 for case in testcases:
 
-	for key in ["isXmas", "isHalloween", "isEurovision"]:
-		if key not in case:
-			case[key] = False
+	if "isEurovision" not in case:
+		case["isEurovision"] = False
+	if "datetime" not in case:
+		case["datetime"] = "2000-01-01T17:00"
+	currentDateTime = datetime.datetime.fromisoformat(case['datetime'])
 
-	actual = getWeighting(case['payload'], isXmas = case['isXmas'], isEurovision = case['isEurovision'], isHalloween = case['isHalloween'])
+	actual = getWeighting(case['payload'], currentDateTime, isEurovision = case['isEurovision'], )
 	if (round(actual, 5) != round(case['expected'], 5)): # round to avoid irrelevant floating point nonsense
 		print("Failed \"" + case['comment'] + "\".  Returned " + str(actual) + ", expected " + str(case['expected']))
 		failures += 1

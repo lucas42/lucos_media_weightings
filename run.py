@@ -9,9 +9,8 @@ if (apiurl.endswith("/")):
 	sys.exit("\033[91mDon't include a trailing slash in the API url\033[0m")
 page = 0
 
-today = datetime.date.today()
-isDecember = (today.month == 12)
-isLateOctober = (today.month == 10 and today.day > 25)
+# Set 'now' at the start of the script, so it's consistent throughout
+now = datetime.datetime.utcnow()
 
 loganne_result = requests.post("https://loganne.l42.eu/events", json={"source":"lucos_media_weightings","type":"weightings","humanReadable":"Calculate weightings for all media tracks"}, allow_redirects=False)
 if not loganne_result:
@@ -24,7 +23,7 @@ while True:
 		break
 
 	for track in tracks:
-		weighting = getWeighting(track, isXmas = isDecember, isHalloween = isLateOctober)
+		weighting = getWeighting(track, currentDateTime = now)
 		if ('weighting' in track):
 			oldweighting = track['weighting']
 		else:

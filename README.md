@@ -31,6 +31,12 @@ which will check various calls to the getWeighting() function
 ## Running
 `nice -19 docker-compose up -d --no-build`
 
+## Running script without cron
+
+To test the script logic with worrying about cronjobs.
+
+Set `entrypoint: pipenv run python -u run.py` in the docker-compose file (or equivalent)
+
 ## Running locally
 
 Run `pipenv install` to setup

@@ -1,5 +1,7 @@
 
-def getWeighting(track, isXmas = False, isHalloween = False, isEurovision = False):
+def getWeighting(track, currentDateTime, isEurovision = False):
+	isXmas = (currentDateTime.month == 12)
+	isHalloween = (currentDateTime.month == 10 and currentDateTime.day > 25)
 	weighting = 5
 	if 'rating' in track['tags']:
 		rating = float(track['tags']['rating'])
