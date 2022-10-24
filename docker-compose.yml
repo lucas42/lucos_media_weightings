@@ -1,8 +1,9 @@
 version: '3'
 services:
-    media_weightings:
-      build: .
-      container_name: lucos_media_weightings
-      environment:
-        - MEDIA_API
-      image: lucas42/lucos_media_weightings
+  media_weightings:
+    build: .
+    container_name: lucos_media_weightings
+    environment:
+      - MEDIA_API
+    image: lucas42/lucos_media_weightings
+    restart: always
