@@ -28,9 +28,9 @@ class WeightingHandler(BaseHTTPRequestHandler):
 		self.connection.close()
 	def infoController(self):
 		output = {
-			"system": "lucos_media_weighting",
+			"system": "lucos_media_weightings",
 			"ci": {
-				"circle": "gh/lucas42/lucos_media_weighting",
+				"circle": "gh/lucas42/lucos_media_weightings",
 			},
 			"network_only": True,
 			"show_on_homepage": False,
