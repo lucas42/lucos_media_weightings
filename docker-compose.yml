@@ -3,7 +3,10 @@ services:
   media_weightings:
     build: .
     container_name: lucos_media_weightings
+    ports:
+      - "8023:8023"
     environment:
+      - PORT=8023
       - MEDIA_API
     image: lucas42/lucos_media_weightings
     restart: always

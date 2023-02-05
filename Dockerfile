@@ -11,4 +11,5 @@ COPY Pipfile* ./
 RUN pipenv install
 COPY *.py ./
 
+EXPOSE $PORT
 CMD [ "./cron.sh"]
