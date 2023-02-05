@@ -10,13 +10,13 @@ if (apiurl.endswith("/")):
 def getAllTracks(page):
 	return requests.get(apiurl+"/tracks/?page="+str(page)).json()
 
-def updateWeighting(track, currentDateTime):
+def updateWeighting(track):
 	verbose = False
 	if ('weighting' in track):
 		oldweighting = track['weighting']
 	else:
 		oldweighting = "Not set"
-	weighting = getWeighting(track, currentDateTime)
+	weighting = getWeighting(track, datetime.datetime.utcnow())
 	if (oldweighting != weighting):
 		if verbose:
 			print(json.dumps(track, indent=2))

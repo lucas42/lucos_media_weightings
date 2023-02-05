@@ -1,5 +1,5 @@
 #! /usr/local/bin/python3
-import json, sys, datetime, os, traceback
+import json, sys, os, traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from media_api import updateWeighting
 
@@ -46,7 +46,7 @@ class WeightingHandler(BaseHTTPRequestHandler):
 			self.send_error(400, "Invalid json", str(error))
 			return
 		try:
-			response = updateWeighting(track, datetime.datetime.utcnow())
+			response = updateWeighting(track)
 			self.send_response(200, "OK")
 			self.send_header("Content-type", "text/plain")
 			self.end_headers()
