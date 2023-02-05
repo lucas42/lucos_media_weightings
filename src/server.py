@@ -1,7 +1,7 @@
 #! /usr/local/bin/python3
 import json, sys, datetime, os, traceback, requests
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from func import getWeighting
+from logic import getWeighting
 verbose = False
 
 if not os.environ.get("PORT"):

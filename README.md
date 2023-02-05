@@ -48,11 +48,14 @@ Run `pipenv install` to setup
 For local development, these should be stored in a .env file
 
 * _**MEDIA_API**_ URL of an instance of [lucos_media_metadata_api](https://github.com/lucas42/lucos_media_metadata_api)
+* _**PORT**_ The TCP port to the run the HTTP server on.  Defaults to 8023 to avoid clashes with other lucos services.
 
 ## File structure
 
 * `Dockerfile`, `Pipfile`, `Pipfile.lock` and the `.cirleci` directory are used at build time
-* `cron.sh` ensures the cron daemon is running with the right environment set up and sharing its logs in a way that get surfaced to Docker
-* `func.py` holds the logic for calculating of a given track.
-* `test.py` does some simple checks on the logic in `func.py`.
-* `run.py` is responable for iterating through all the tracks and updating the weightings via the metadata API.
+* `src` directory holds the python source code
+  - `cron.sh` ensures the cron daemon is running with the right environment set up and sharing its logs in a way that get surfaced to Docker
+  - `logic.py` holds the logic for calculating the weighting of a given track.
+  - `server.py` runs a HTTP server which updates the weighting of a given track via the metadata API.
+  - `all-tracks.py` is script which iterates through all the tracks and updates the weightings via the metadata API.
+* `test.py` does some simple checks on the logic in `src/logic.py`.

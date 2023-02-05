@@ -2,7 +2,7 @@
 import datetime
 
 # Unit under test
-from func import getWeighting
+from src.logic import getWeighting
 
 testcases = [
 	{
