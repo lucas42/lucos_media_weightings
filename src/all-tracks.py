@@ -1,50 +1,29 @@
 #! /usr/local/bin/python3
-import requests, json, sys, datetime, os
-from func import getWeighting
-verbose = False
-if not os.environ.get("MEDIA_API"):
-	sys.exit("\033[91mMEDIA_API not set\033[0m")
-apiurl = os.environ.get("MEDIA_API")
-if (apiurl.endswith("/")):
-	sys.exit("\033[91mDon't include a trailing slash in the API url\033[0m")
-page = 0
+import datetime
+from media_api import getAllTracks, updateWeighting, updateWeightingsTimestamp
+from loganne import loganneRequest
 
 # Set 'now' at the start of the script, so it's consistent throughout
 now = datetime.datetime.utcnow()
 
-loganne_result = requests.post("https://loganne.l42.eu/events", json={"source":"lucos_media_weightings","type":"weightings","humanReadable":"Calculate weightings for all media tracks"}, allow_redirects=False)
-if not loganne_result:
-	print ("\033[91m** Error ** Call to Loganne failed with "+str(loganne_result.status_code)+" response: " +  loganne_result.text + "\033[0m")
+loganneRequest({
+	"type":"weightings",
+	"humanReadable": "Calculate weightings for all media tracks",
+})
 print ("\033[0mChecking media library for weightings which have changed...")
+
+page = 0
 while True:
 	page += 1
-	tracks = requests.get(apiurl+"/tracks/?page="+str(page)).json()
+	tracks = getAllTracks(page)
 	if len(tracks) == 0:
 		break
 
 	for track in tracks:
-		weighting = getWeighting(track, currentDateTime = now)
-		if ('weighting' in track):
-			oldweighting = track['weighting']
-		else:
-			oldweighting = "Not set"
-		if (oldweighting != weighting):
-			print("\033[1mWeighting update: " + track['url'] + " " + str(oldweighting) + " => " + str(weighting)+ "\033[0m")
-			if verbose:
-				print(json.dumps(track, indent=2))
-			result = requests.put(apiurl+"/tracks/"+str(track['trackid'])+"/weighting", data=str(weighting), allow_redirects=False)
-			if result.is_redirect:
-				print ("\033[91m** Error ** Redirect returned by server.  Make sure you're using the latest API URL. \033[0m")
-			elif result.ok:
-				print ("\033[92mWeighting updated to: " +  result.text + "\033[0m")
-			else:
-				print ("\033[91m** Error ** HTTP Status code "+str(result.status_code)+" returned by API: " +  result.text + "\033[0m")
-		else:
-			print(track['url'] + " - still " + str(weighting))
+		try:
+			response = updateWeighting(track, currentDateTime = now)
+			print("\033[92m" + track['url'] + " - "+  response + "\033[0m")
+		except Exception as error:
+			print ("\033[91m** Error ** " + str(error) + "\033[0m")
 
-# Save the current time as a global in the media API
-timestampresult = requests.put(apiurl+"/globals/latest_weightings-timestamp", data=datetime.datetime.utcnow().isoformat().encode('utf-8'), allow_redirects=False)
-if timestampresult.ok:
-	print ("\033[92mLast weightings timestamp updated: " +  timestampresult.text + "\033[0m")
-else:
-	print ("\033[91m** Error ** HTTP Status code "+str(timestampresult.status_code)+" returned by API: " +  timestampresult.text + "\033[0m")
+updateWeightingsTimestamp()
