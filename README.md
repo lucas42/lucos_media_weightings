@@ -35,13 +35,13 @@ which will check various calls to the getWeighting() function
 
 To test the script logic with worrying about cronjobs.
 
-Set `entrypoint: pipenv run python -u run.py` in the docker-compose file (or equivalent)
+Set `entrypoint: pipenv run python -u all-tracks.py` in the docker-compose file (or equivalent)
 
 ## Running locally
 
 Run `pipenv install` to setup
 
-`pipenv run python run.py`
+`pipenv run python all-tracks.py`
 
 
 ## Environment Variables
