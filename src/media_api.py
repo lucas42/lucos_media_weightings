@@ -58,21 +58,3 @@ def updateWeighting(track):
 			raise Exception("HTTP Status code "+str(result.status_code)+" returned by API: " +  result.text)
 	else:
 		return "Weighting stayed the same"
-
-
-# Save the current time as a global in the media API
-def updateWeightingsTimestamp():
-	timestampresult = requests.put(apiurl+"/globals/latest_weightings-timestamp", data=datetime.utcnow().isoformat().encode('utf-8'), allow_redirects=False)
-	if timestampresult.ok:
-		print ("\033[92mLast weightings timestamp updated: " +  timestampresult.text + "\033[0m")
-	else:
-		print ("\033[91m** Error ** HTTP Status code "+str(timestampresult.status_code)+" returned by API: " +  timestampresult.text + "\033[0m")
-
-def getWeightingsTimestampAge():
-	""" Returns the number of seconds since the all-tracks script last successfully completed """
-	response = requests.get(apiurl+"/globals/latest_weightings-timestamp")
-	if not response.ok:
-		raise Exception("HTTP Status code "+str(result.status_code)+" returned by API: " +  result.text)
-	last_script_time = datetime.fromisoformat(str(response.text))
-	since_script = datetime.now() - last_script_time
-	return since_script.total_seconds()

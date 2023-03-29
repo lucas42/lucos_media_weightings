@@ -1,5 +1,5 @@
 #! /usr/local/bin/python3
-from media_api import getAllTracks, updateWeighting, updateWeightingsTimestamp
+from media_api import getAllTracks, updateWeighting
 from loganne import loganneRequest
 from schedule_tracker import updateScheduleTracker
 
@@ -18,6 +18,4 @@ for track in getAllTracks():
 	except Exception as error:
 		print ("\033[91m** Error ** " + str(error) + "\033[0m")
 
-# Record the timestamp the script completed for monitoring and debug purposes
-updateWeightingsTimestamp()
 updateScheduleTracker()

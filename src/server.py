@@ -1,7 +1,7 @@
 #! /usr/local/bin/python3
 import json, sys, os, traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from media_api import updateWeighting, getWeightingsTimestampAge
+from media_api import updateWeighting
 
 if not os.environ.get("PORT"):
 	sys.exit("\033[91mPORT not set\033[0m")
@@ -27,25 +27,14 @@ class WeightingHandler(BaseHTTPRequestHandler):
 		self.wfile.flush()
 		self.connection.close()
 	def infoController(self):
-		weightingsAge = getWeightingsTimestampAge()
-		twoDaysInSeconds = 2 * 24 * 60 * 60
-		weightingsAgeOk = weightingsAge < twoDaysInSeconds
 		output = {
 			"system": "lucos_media_weightings",
 			"ci": {
 				"circle": "gh/lucas42/lucos_media_weightings",
 			},
 			"checks": {
-				"all-tracks": {
-					"techDetail": "Checks whether 'latest_weightings-timestamp' from media_api is within the past 2 days",
-					"ok": weightingsAgeOk,
-				}
 			},
 			"metrics": {
-				"since-all-tracks": {
-					"techDetail": "Seconds since latest completion of all-tracks weightings script",
-					"value": weightingsAge,
-				}
 			},
 			"network_only": True,
 			"show_on_homepage": False,
