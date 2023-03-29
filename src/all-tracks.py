@@ -1,6 +1,7 @@
 #! /usr/local/bin/python3
 from media_api import getAllTracks, updateWeighting, updateWeightingsTimestamp
 from loganne import loganneRequest
+from schedule_tracker import updateScheduleTracker
 
 # Record in loganne that the script has started
 loganneRequest({
@@ -19,3 +20,4 @@ for track in getAllTracks():
 
 # Record the timestamp the script completed for monitoring and debug purposes
 updateWeightingsTimestamp()
+updateScheduleTracker()
