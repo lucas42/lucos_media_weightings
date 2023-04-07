@@ -54,8 +54,8 @@ For local development, these should be stored in a .env file
 
 * `Dockerfile`, `Pipfile`, `Pipfile.lock` and the `.cirleci` directory are used at build time
 * `src` directory holds the python source code
-  - `cron.sh` ensures the cron daemon is running with the right environment set up and sharing its logs in a way that get surfaced to Docker
   - `logic.py` holds the logic for calculating the weighting of a given track.
   - `server.py` runs a HTTP server which updates the weighting of a given track via the metadata API.
   - `all-tracks.py` is script which iterates through all the tracks and updates the weightings via the metadata API.
 * `test.py` does some simple checks on the logic in `src/logic.py`.
+* `startup.sh` ensures the cron daemon is running with the right environment set up and sharing its logs in a way that get surfaced to Docker
