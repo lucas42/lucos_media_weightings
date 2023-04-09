@@ -179,6 +179,19 @@ testcases = [
 		'datetime': "1990-09-05T12:30",
 		'expected': 7.7,
 	},
+	{
+		'comment': "Added tags with a trailing Z are parsed as expected",
+		'payload': {
+			'url': "http://example.com/new.mp3",
+			'tags': {
+				'title': 'More New Music just dropped',
+				'rating': "8",
+				'added': "2030-02-01T23:00Z",
+			}
+		},
+		'datetime': "2030-02-10T12:30",
+		'expected': 80,
+	},
 ]
 failures = 0
 for case in testcases:

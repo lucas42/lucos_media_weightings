@@ -27,7 +27,13 @@ def getWeighting(track, currentDateTime, isEurovision = False):
 
 	if 'added' in track['tags']:
 		try:
-			dateTimeAdded = datetime.datetime.fromisoformat(track['tags']['added'])
+			addedTag = track['tags']['added']
+
+			# RFC3339 and ISO 8601 are similar, but not exactly the same
+			# But if one ends in a Z (for Zulu-time), we can strip that off the end and treat it as if it's not there
+			if addedTag[-1] == "Z":
+				addedTag = addedTag[:-1]
+			dateTimeAdded = datetime.datetime.fromisoformat(addedTag)
 			delta = currentDateTime - dateTimeAdded
 			if delta.days < 1:
 				weighting *= 100
