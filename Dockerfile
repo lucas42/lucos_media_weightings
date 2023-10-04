@@ -1,5 +1,5 @@
 # The version of pipenv bundled with Debian bookworm doesn't appear to be compatible with python 3.12, so lock at 3.11 for now.
-FROM python:3.11
+FROM python:3.12
 
 WORKDIR /usr/src/app
 
