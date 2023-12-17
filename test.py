@@ -12,7 +12,8 @@ testcases = [
 			'tags': {
 				'title': 'Joelyn',
 				'artist': 'Dolly Parton',
-			}
+			},
+			'duration': 500,
 		},
 		'expected': 5,
 	},
@@ -191,6 +192,17 @@ testcases = [
 		},
 		'datetime': "2030-02-10T12:30",
 		'expected': 80,
+	},
+	{
+		'comment': "Really long tracks (eg full albums) are zero weighted",
+		'payload': {
+			'url': "http://example.com/full-album.mp3",
+			'tags': {
+				'title': 'The Best of Some Band - Full Album',
+			},
+			'duration': 1912,
+		},
+		'expected': 0,
 	},
 ]
 failures = 0
