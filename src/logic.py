@@ -1,8 +1,6 @@
 import datetime
 
 def getWeighting(track, currentDateTime, isEurovision = False):
-	isXmas = (currentDateTime.month == 12)
-	isHalloween = (currentDateTime.month == 10 and currentDateTime.day > 25)
 	weighting = 5
 	if 'rating' in track['tags']:
 		rating = float(track['tags']['rating'])
@@ -11,17 +9,19 @@ def getWeighting(track, currentDateTime, isEurovision = False):
 		else:
 			weighting = rating
 
-	if 'event' in track['tags']:
-		event = track['tags']['event'].lower()
-		if event == "xmas":
-			if isXmas:
-				weighting *= 10
-			else:
-				weighting /= 100
-		elif event == "hallowe'en":
+	isXmas = (currentDateTime.month == 12)
+	if 'christmas' in track['collections']:
+		if isXmas:
+			weighting *= 10
+		else:
+			weighting /= 100
+
+	isHalloween = (currentDateTime.month == 10 and currentDateTime.day > 25)
+	if 'halloween' in track['collections']:
 			if isHalloween:
 				weighting *= 50
-		elif event == "eurovision":
+
+	if 'eurovision' in track['collections']:
 			if isEurovision:
 				weighting *= 100
 

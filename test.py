@@ -13,6 +13,7 @@ testcases = [
 				'title': 'Joelyn',
 				'artist': 'Dolly Parton',
 			},
+			'collections': [],
 			'duration': 500,
 		},
 		'expected': 5,
@@ -25,7 +26,8 @@ testcases = [
 				'title': 'Yellow Submarine',
 				'artist': 'The Beatles',
 				'rating': "7.1",
-			}
+			},
+			'collections': [],
 		},
 		'expected': 7.1,
 	},
@@ -37,7 +39,8 @@ testcases = [
 				'title': 'Singing rude stuff in silly voices',
 				'artist': 'South Park',
 				'rating': "0.4",
-			}
+			},
+			'collections': [],
 		},
 		'expected': 0,
 	},
@@ -48,7 +51,8 @@ testcases = [
 				'title': 'Orson Welles, H.G.Wells - War Of The Worlds (The Original Broadcast Oct 30, 193', 
 				'format': 'speech',
 				'artist': 'Orson Welles',
-			}
+			},
+			'collections': [],
 		},
 		'expected': 0,
 	},
@@ -59,7 +63,8 @@ testcases = [
 			'tags': {
 				'title': 'Explosion', 
 				'format': 'fx',
-			}
+			},
+			'collections': [],
 		},
 		'expected': 0,
 	},
@@ -70,7 +75,8 @@ testcases = [
 			'tags': {
 				'title': 'Episode 3', 
 				'format': 'podcast',
-			}
+			},
+			'collections': [],
 		},
 		'expected': 0,
 	},
@@ -82,8 +88,10 @@ testcases = [
 				'title': 'Christmas Time',
 				'artist': 'The Darkness',
 				'rating': "8.2",
-				'event': 'xmas'
-			}
+			},
+			'collections': [
+				'christmas',
+			],
 		},
 		'datetime': "2050-09-29",
 		'expected': 0.082,
@@ -96,8 +104,10 @@ testcases = [
 				'title': 'Christmas Time',
 				'artist': 'The Darkness',
 				'rating': "8.2",
-				'event': 'xmas',
-			}
+			},
+			'collections': [
+				'christmas',
+			],
 		},
 		'datetime': "2012-12-02",
 		'expected': 82,
@@ -109,8 +119,10 @@ testcases = [
 			'tags': {
 				'title': 'Monster Mash',
 				'rating': "6.5",
-				'event': "Hallowe'en",
-			}
+			},
+			'collections': [
+				'halloween',
+			],
 		},
 		'datetime': "1998-10-30",
 		'expected': 325,
@@ -122,8 +134,10 @@ testcases = [
 			'tags': {
 				'title': 'Wolves of the sea of the Sea',
 				'rating': "9.2",
-				'event': 'eurovision',
-			}
+			},
+			'collections': [
+				'eurovision',
+			],
 		},
 		'isEurovision': True,
 		'expected': 920,
@@ -136,7 +150,8 @@ testcases = [
 				'title': 'New Music just dropped',
 				'rating': "7",
 				'added': "2030-02-01T23:00",
-			}
+			},
+			'collections': [],
 		},
 		'datetime': "2030-02-10T12:30",
 		'expected': 70,
@@ -149,7 +164,8 @@ testcases = [
 				'title': 'Brand New Music just dropped',
 				'rating': "8",
 				'added': "2020-03-04T21:21",
-			}
+			},
+			'collections': [],
 		},
 		'datetime': "2020-03-05T12:30",
 		'expected': 800,
@@ -162,7 +178,8 @@ testcases = [
 				'title': 'Older Music',
 				'rating': "8.4",
 				'added': "2025-08-08T21:21",
-			}
+			},
+			'collections': [],
 		},
 		'datetime': "2025-09-05T12:30",
 		'expected': 8.4,
@@ -175,7 +192,8 @@ testcases = [
 				'title': 'Music of Unknown Age',
 				'rating': "7.7",
 				'added': "1209238492842098",
-			}
+			},
+			'collections': [],
 		},
 		'datetime': "1990-09-05T12:30",
 		'expected': 7.7,
@@ -188,7 +206,8 @@ testcases = [
 				'title': 'More New Music just dropped',
 				'rating': "8",
 				'added': "2030-02-01T23:00Z",
-			}
+			},
+			'collections': [],
 		},
 		'datetime': "2030-02-10T12:30",
 		'expected': 80,
@@ -200,6 +219,7 @@ testcases = [
 			'tags': {
 				'title': 'The Best of Some Band - Full Album',
 			},
+			'collections': [],
 			'duration': 1912,
 		},
 		'expected': 0,
