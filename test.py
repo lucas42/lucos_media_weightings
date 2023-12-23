@@ -90,7 +90,9 @@ testcases = [
 				'rating': "8.2",
 			},
 			'collections': [
-				'christmas',
+				{
+					'slug': 'christmas',
+				},
 			],
 		},
 		'datetime': "2050-09-29",
@@ -106,7 +108,10 @@ testcases = [
 				'rating': "8.2",
 			},
 			'collections': [
-				'christmas',
+				{
+					'slug': 'christmas',
+					'name': "Christmas",
+				},
 			],
 		},
 		'datetime': "2012-12-02",
@@ -121,7 +126,9 @@ testcases = [
 				'rating': "6.5",
 			},
 			'collections': [
-				'halloween',
+				{
+					'slug': 'halloween',
+				},
 			],
 		},
 		'datetime': "1998-10-30",
@@ -136,7 +143,9 @@ testcases = [
 				'rating': "9.2",
 			},
 			'collections': [
-				'eurovision',
+				{
+					'slug': 'eurovision',
+				},
 			],
 		},
 		'isEurovision': True,
