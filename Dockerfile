@@ -1,11 +1,10 @@
-# The version of pipenv bundled with Debian bookworm doesn't appear to be compatible with python 3.12, so lock at 3.11 for now.
-FROM python:3.11
+FROM python:3.12-alpine
 
 WORKDIR /usr/src/app
 
-RUN apt-get update && apt-get install -y pipenv cron
+RUN pip install pipenv
 
-RUN echo "10 2 * * * root cd `pwd` && pipenv run python -u all-tracks.py >> /var/log/cron.log 2>&1" > /etc/cron.d/weighting-all-tracks
+RUN echo "10 2 * * * cd `pwd` && pipenv run python -u all-tracks.py >> /var/log/cron.log 2>&1" | crontab -
 COPY startup.sh .
 
 COPY Pipfile* ./
