@@ -8,5 +8,6 @@ services:
     environment:
       - PORT=8023
       - MEDIA_API
+      - KEY_LUCOS_MEDIA_METADATA_API
     image: lucas42/lucos_media_weightings
     restart: always
