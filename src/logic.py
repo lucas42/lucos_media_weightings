@@ -58,4 +58,7 @@ def getWeighting(track, currentDateTime, isEurovision = False):
 		if track['duration'] > 1800:
 			weighting = 0
 
+	if 'karaoke' in collection_slugs:
+		weighting = 0
+
 	return weighting

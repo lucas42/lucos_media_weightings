@@ -233,6 +233,21 @@ testcases = [
 		},
 		'expected': 0,
 	},
+	{
+		'comment': "Karaoke tracks are zero weighted",
+		'payload': {
+			'url': "http://example.com/karaoke-track.mp3",
+			'tags': {
+				'title': 'I Will Survive - Karaoke Backing Track',
+			},
+			'collections': [
+				{
+					'slug': 'karaoke',
+				},
+			],
+		},
+		'expected': 0,
+	},
 ]
 failures = 0
 for case in testcases:
