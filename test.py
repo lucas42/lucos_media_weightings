@@ -48,11 +48,14 @@ testcases = [
 		'comment': "Speech tracks are rated zero",
 		'payload': {
 			'tags': {
-				'title': 'Orson Welles, H.G.Wells - War Of The Worlds (The Original Broadcast Oct 30, 193', 
-				'format': 'speech',
+				'title': 'Orson Welles, H.G.Wells - War Of The Worlds (The Original Broadcast Oct 30, 193',
 				'artist': 'Orson Welles',
 			},
-			'collections': [],
+			'collections': [
+				{
+					'slug': 'speech',
+				},
+			],
 		},
 		'expected': 0,
 	},
@@ -61,10 +64,13 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/bang.mp3",
 			'tags': {
-				'title': 'Explosion', 
-				'format': 'fx',
+				'title': 'Explosion',
 			},
-			'collections': [],
+			'collections': [
+				{
+					'slug': 'fx',
+				},
+			],
 		},
 		'expected': 0,
 	},
@@ -73,10 +79,13 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/podcast-episode3.mp3",
 			'tags': {
-				'title': 'Episode 3', 
-				'format': 'podcast',
+				'title': 'Episode 3',
 			},
-			'collections': [],
+			'collections': [
+				{
+					'slug': 'podcasts',
+				},
+			],
 		},
 		'expected': 0,
 	},

@@ -46,13 +46,12 @@ def getWeighting(track, currentDateTime, isEurovision = False):
 		except Exception:
 			pass
 
-	if 'format' in track['tags']:
-		if track['tags']['format'] == "speech":
-			weighting = 0
-		if track['tags']['format'] == "fx":
-			weighting = 0
-		if track['tags']['format'] == "podcast":
-			weighting = 0
+	if 'speech' in collection_slugs:
+		weighting = 0
+	if 'fx' in collection_slugs:
+		weighting = 0
+	if 'podcasts' in collection_slugs:
+		weighting = 0
 
 	if 'duration' in track:
 		if track['duration'] > 1800:
