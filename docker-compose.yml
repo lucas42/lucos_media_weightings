@@ -1,4 +1,3 @@
-version: '3'
 services:
   media_weightings:
     build: .
