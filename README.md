@@ -48,7 +48,7 @@ Run `pipenv install` to setup
 For local development, these should be stored in a .env file
 
 * _**MEDIA_API**_ URL of an instance of [lucos_media_metadata_api](https://github.com/lucas42/lucos_media_metadata_api)
-* _**PORT**_ The TCP port to the run the HTTP server on.  Defaults to 8023 to avoid clashes with other lucos services.
+* _**PORT**_ The TCP port to the run the HTTP server on.
 
 ## File structure
 

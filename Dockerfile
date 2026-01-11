@@ -12,5 +12,4 @@ RUN pipenv install
 
 COPY src/* ./
 
-EXPOSE $PORT
 CMD [ "./startup.sh"]
