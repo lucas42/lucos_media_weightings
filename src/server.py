@@ -3,15 +3,20 @@ import json, sys, os, traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from media_api import updateWeighting
 
+from log_util import info, error
+
 if not os.environ.get("PORT"):
-	sys.exit("\033[91mPORT not set\033[0m")
+	error("PORT not set")
+	sys.exit(1)
 try:
 	port = int(os.environ.get("PORT"))
 except ValueError:
-	sys.exit("\033[91mPORT isn't an integer\033[0m")
+	error("PORT isn't an integer")
+	sys.exit(1)
 
 class WeightingHandler(BaseHTTPRequestHandler):
 	def do_GET(self):
+		info(f"GET {self.path}")
 		if (self.path == "/_info"):
 			self.infoController()
 		else:
@@ -19,6 +24,7 @@ class WeightingHandler(BaseHTTPRequestHandler):
 		self.wfile.flush()
 		self.connection.close()
 	def do_POST(self):
+		info(f"POST {self.path}")
 		self.post_data = self.rfile.read(int(self.headers['Content-Length']))
 		if (self.path == "/weight-track"):
 			self.singleTrackController()
@@ -55,12 +61,13 @@ class WeightingHandler(BaseHTTPRequestHandler):
 			self.send_header("Content-type", "text/plain")
 			self.end_headers()
 			self.wfile.write(bytes(response, "utf-8"))
-		except Exception as error:
+		except Exception as err:
 			traceback.print_exc()
-			self.send_error(500, "Error updating weighting", str(error))
+			error(f"Error updating weighting: {str(err)}")
+			self.send_error(500, "Error updating weighting", str(err))
 
 
 if __name__ == "__main__":
 	server = HTTPServer(('', port), WeightingHandler)
-	print("Server started on port %s" % (port))
+	info("Server started on port %s" % (port))
 	server.serve_forever()

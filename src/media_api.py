@@ -1,16 +1,20 @@
 import json, sys, os, requests
 from datetime import datetime
 from logic import getWeighting
+from log_util import info, error
 
 if not os.environ.get("MEDIA_API"):
-	sys.exit("\033[91mMEDIA_API not set\033[0m")
+	error("MEDIA_API not set")
+	sys.exit(1)
 apiurl = os.environ.get("MEDIA_API")
 if (apiurl.endswith("/")):
-	sys.exit("\033[91mDon't include a trailing slash in the API url\033[0m")
+	error("Don't include a trailing slash in the API url")
+	sys.exit(1)
 
 
 if not os.environ.get("KEY_LUCOS_MEDIA_METADATA_API"):
-	sys.exit("\033[91mKEY_LUCOS_MEDIA_METADATA_API not set\033[0m")
+	error("KEY_LUCOS_MEDIA_METADATA_API not set")
+	sys.exit(1)
 apiKey = os.environ.get("KEY_LUCOS_MEDIA_METADATA_API")
 
 class getAllTracks:
