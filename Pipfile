@@ -1,15 +1,11 @@
 [[source]]
-
 url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
-
 requests = "*"
 lucos-loganne-pythonclient = "==1.0.4"
-
+lucos-schedule-tracker-pythonclient = "==1.0.1"
 
 [dev-packages]
-
