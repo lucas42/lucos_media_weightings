@@ -1,6 +1,4 @@
-FROM python:3.15.0a5-alpine
-
-WORKDIR /usr/src/app
+FROM lucas42/lucos_scheduled_scripts:1.0.1
 
 RUN pip install pipenv
 
