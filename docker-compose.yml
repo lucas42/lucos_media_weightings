@@ -9,5 +9,7 @@ services:
       - MEDIA_API
       - KEY_LUCOS_MEDIA_METADATA_API
       - SCHEDULE_TRACKER_ENDPOINT
+      - SYSTEM
+      - LOGANNE_ENDPOINT
     image: lucas42/lucos_media_weightings
     restart: always
