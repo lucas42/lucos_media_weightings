@@ -149,6 +149,15 @@
             "markers": "python_version >= '3.8'",
             "version": "==3.11"
         },
+        "lucos-loganne-pythonclient": {
+            "hashes": [
+                "sha256:92241b8e379750782ed3bfea1af6cb9e723ffb2a06d521c531f128062c987c7e",
+                "sha256:d860772d06be903b72173786a90db919a26f7ea202f303365039b5d81efd1bd9"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.8'",
+            "version": "==1.0.4"
+        },
         "lucos-schedule-tracker-pythonclient": {
             "hashes": [
                 "sha256:28c5c2a9bb7abf67b53b2f8c42368db36dd3a404d1579dc107e2e1d39dfdf182",
