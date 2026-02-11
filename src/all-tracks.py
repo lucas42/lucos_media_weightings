@@ -20,4 +20,4 @@ for track in getAllTracks():
 	except Exception as err:
 		error("** Error ** " + str(err))
 
-updateScheduleTracker()
+updateScheduleTracker(success=True)
