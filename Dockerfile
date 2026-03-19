@@ -1,4 +1,4 @@
-FROM lucas42/lucos_scheduled_scripts:1.0.1
+FROM lucas42/lucos_scheduled_scripts:1.0.4
 
 RUN pip install pipenv
 
