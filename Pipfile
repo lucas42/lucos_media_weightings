@@ -6,6 +6,6 @@ name = "pypi"
 [packages]
 requests = "*"
 lucos-loganne-pythonclient = "==1.0.7"
-lucos-schedule-tracker-pythonclient = "==1.0.4"
+lucos-schedule-tracker-pythonclient = "==1.0.7"
 
 [dev-packages]
