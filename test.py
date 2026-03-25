@@ -2,7 +2,7 @@
 import datetime
 
 # Unit under test
-from src.logic import getWeighting, soft_cap
+from src.logic import getWeighting, soft_cap, parse_tag_values
 
 testcases = [
 	{
@@ -302,6 +302,120 @@ testcases = [
 		'cap': 100,
 		'expected': 100,
 	},
+	{
+		'comment': "Track about a current event gets 100x multiplier (soft-capped)",
+		'payload': {
+			'url': "http://example.com/march-song.mp3",
+			'tags': {
+				'title': 'March Song',
+				'rating': "6",
+				'about': "https://eolas.l42.eu/metadata/month/3/",
+			},
+			'collections': [],
+		},
+		'currentItems': [
+			{'uri': 'https://eolas.l42.eu/metadata/month/3/', 'name': 'March', 'type': 'Month'},
+		],
+		'expected': 379.27235,
+	},
+	{
+		'comment': "Track mentioning a current event gets 20x multiplier (soft-capped)",
+		'payload': {
+			'url': "http://example.com/mentions-march.mp3",
+			'tags': {
+				'title': 'Spring Vibes',
+				'rating': "5",
+				'mentions': "https://eolas.l42.eu/metadata/month/3/",
+			},
+			'collections': [],
+		},
+		'currentItems': [
+			{'uri': 'https://eolas.l42.eu/metadata/month/3/', 'name': 'March', 'type': 'Month'},
+		],
+		'expected': 90.63462,
+	},
+	{
+		'comment': "About takes priority over mentions for the same current item",
+		'payload': {
+			'url': "http://example.com/about-and-mentions.mp3",
+			'tags': {
+				'title': 'Festival Song',
+				'rating': "7",
+				'about': "https://eolas.l42.eu/metadata/festival/42/",
+				'mentions': "https://eolas.l42.eu/metadata/festival/42/",
+			},
+			'collections': [],
+		},
+		'currentItems': [
+			{'uri': 'https://eolas.l42.eu/metadata/festival/42/', 'name': 'Christmas Day', 'type': 'Festival'},
+		],
+		'expected': 442.48441,
+	},
+	{
+		'comment': "Multiple current items stack multiplicatively (hits soft cap)",
+		'payload': {
+			'url': "http://example.com/multi-match.mp3",
+			'tags': {
+				'title': 'Monday March Song',
+				'rating': "5",
+				'about': "https://eolas.l42.eu/metadata/month/3/,https://eolas.l42.eu/metadata/dayofweek/1/",
+			},
+			'collections': [],
+		},
+		'currentItems': [
+			{'uri': 'https://eolas.l42.eu/metadata/month/3/', 'name': 'March', 'type': 'Month'},
+			{'uri': 'https://eolas.l42.eu/metadata/dayofweek/1/', 'name': 'Monday', 'type': 'DayOfWeek'},
+		],
+		'expected': 500,
+	},
+	{
+		'comment': "No multiplier when current items don't match track tags",
+		'payload': {
+			'url': "http://example.com/no-match.mp3",
+			'tags': {
+				'title': 'Random Song',
+				'rating': "6",
+				'about': "https://eolas.l42.eu/metadata/month/12/",
+			},
+			'collections': [],
+		},
+		'currentItems': [
+			{'uri': 'https://eolas.l42.eu/metadata/month/3/', 'name': 'March', 'type': 'Month'},
+		],
+		'expected': 5.97010,
+	},
+	{
+		'comment': "No multiplier when no current items provided",
+		'payload': {
+			'url': "http://example.com/no-events.mp3",
+			'tags': {
+				'title': 'Normal Song',
+				'rating': "8",
+				'about': "https://eolas.l42.eu/metadata/month/3/",
+			},
+			'collections': [],
+		},
+		'currentItems': [],
+		'expected': 7.96013,
+	},
+	{
+		'comment': "Track with about and mentions matching different current items",
+		'payload': {
+			'url': "http://example.com/mixed-match.mp3",
+			'tags': {
+				'title': 'Mixed Match',
+				'rating': "4",
+				'about': "https://eolas.l42.eu/metadata/month/3/",
+				'mentions': "https://eolas.l42.eu/metadata/dayofweek/1/",
+			},
+			'collections': [],
+		},
+		'currentItems': [
+			{'uri': 'https://eolas.l42.eu/metadata/month/3/', 'name': 'March', 'type': 'Month'},
+			{'uri': 'https://eolas.l42.eu/metadata/dayofweek/1/', 'name': 'Monday', 'type': 'DayOfWeek'},
+		],
+		'expected': 400,
+	},
 ]
 failures = 0
 for case in testcases:
@@ -331,13 +445,29 @@ for case in testcases:
 		case["datetime"] = "2000-01-01T17:00"
 	currentDateTime = datetime.datetime.fromisoformat(case['datetime'])
 
-	actual = getWeighting(case['payload'], currentDateTime, isEurovision = case['isEurovision'], )
+	currentItems = case.get('currentItems', None)
+	actual = getWeighting(case['payload'], currentDateTime, isEurovision = case['isEurovision'], currentItems = currentItems)
 	if (round(actual, 5) != round(case['expected'], 5)): # round to avoid irrelevant floating point nonsense
 		print("\033[91mFailed\033[0m \"" + case['comment'] + "\".  Returned \033[91m" + str(actual) + "\033[0m, expected " + str(case['expected']))
 		failures += 1
 
+# parse_tag_values unit tests
+parse_tag_tests = [
+	{'input': '', 'expected': set()},
+	{'input': 'https://eolas.l42.eu/metadata/month/3/', 'expected': {'https://eolas.l42.eu/metadata/month/3/'}},
+	{'input': 'https://eolas.l42.eu/metadata/month/3/,https://eolas.l42.eu/metadata/dayofweek/1/', 'expected': {'https://eolas.l42.eu/metadata/month/3/', 'https://eolas.l42.eu/metadata/dayofweek/1/'}},
+	{'input': ' https://eolas.l42.eu/metadata/month/3/ , https://eolas.l42.eu/metadata/dayofweek/1/ ', 'expected': {'https://eolas.l42.eu/metadata/month/3/', 'https://eolas.l42.eu/metadata/dayofweek/1/'}},
+	{'input': ',,,', 'expected': set()},
+]
+for pt in parse_tag_tests:
+	actual = parse_tag_values(pt['input'])
+	if actual != pt['expected']:
+		print(f"\033[91mFailed\033[0m parse_tag_values(\"{pt['input']}\").  Returned \033[91m{actual}\033[0m, expected {pt['expected']}")
+		failures += 1
+total_cases = len(testcases) + len(parse_tag_tests)
+
 if (failures > 0):
-	print("\033[91m"+str(failures) + " failures\033[0m in " + str(len(testcases)) + " cases.")
+	print("\033[91m"+str(failures) + " failures\033[0m in " + str(total_cases) + " cases.")
 	exit(1)
 else:
-	print("All " + str(len(testcases)) + " cases passed.")
+	print("All " + str(total_cases) + " cases passed.")

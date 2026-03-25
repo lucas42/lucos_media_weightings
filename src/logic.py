@@ -4,7 +4,13 @@ import math
 def soft_cap(raw_multiplier, cap=100):
 	return cap * (1 - math.exp(-raw_multiplier / cap))
 
-def getWeighting(track, currentDateTime, isEurovision = False):
+def parse_tag_values(tag_value):
+	"""Parse a tag value that may contain comma-separated URIs into a set of trimmed values."""
+	if not tag_value:
+		return set()
+	return {v.strip() for v in tag_value.split(',') if v.strip()}
+
+def getWeighting(track, currentDateTime, isEurovision = False, currentItems = None):
 	collection_slugs = list(map(lambda collection: collection['slug'], track['collections']))
 
 	weighting = 5
@@ -51,6 +57,18 @@ def getWeighting(track, currentDateTime, isEurovision = False):
 		# Ignore invalid dates in 'added' tag
 		except Exception:
 			pass
+
+	# Apply current event multipliers based on about/mentions tags
+	if currentItems:
+		about_uris = parse_tag_values(track['tags'].get('about', ''))
+		mentions_uris = parse_tag_values(track['tags'].get('mentions', ''))
+		current_uris = {item['uri'] for item in currentItems}
+
+		for uri in current_uris:
+			if uri in about_uris:
+				multiplier *= 100
+			elif uri in mentions_uris:
+				multiplier *= 20
 
 	weighting *= soft_cap(multiplier, cap=100)
 
