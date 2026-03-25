@@ -1,4 +1,8 @@
 import datetime
+import math
+
+def soft_cap(raw_multiplier, cap=100):
+	return cap * (1 - math.exp(-raw_multiplier / cap))
 
 def getWeighting(track, currentDateTime, isEurovision = False):
 	collection_slugs = list(map(lambda collection: collection['slug'], track['collections']))
@@ -11,21 +15,23 @@ def getWeighting(track, currentDateTime, isEurovision = False):
 		else:
 			weighting = rating
 
+	multiplier = 1
+
 	isXmas = (currentDateTime.month == 12)
 	if 'christmas' in collection_slugs:
 		if isXmas:
-			weighting *= 10
+			multiplier *= 10
 		else:
 			weighting /= 100
 
 	isHalloween = (currentDateTime.month == 10 and currentDateTime.day > 25)
 	if 'halloween' in collection_slugs:
 		if isHalloween:
-			weighting *= 50
+			multiplier *= 50
 
 	if 'eurovision' in collection_slugs:
 		if isEurovision:
-			weighting *= 100
+			multiplier *= 100
 
 	if 'added' in track['tags']:
 		try:
@@ -38,13 +44,15 @@ def getWeighting(track, currentDateTime, isEurovision = False):
 			dateTimeAdded = datetime.datetime.fromisoformat(addedTag)
 			delta = currentDateTime - dateTimeAdded
 			if delta.days < 1:
-				weighting *= 100
+				multiplier *= 100
 			elif delta.days < 14:
-				weighting *= 10
+				multiplier *= 10
 
 		# Ignore invalid dates in 'added' tag
 		except Exception:
 			pass
+
+	weighting *= soft_cap(multiplier, cap=100)
 
 	if 'speech' in collection_slugs:
 		weighting = 0
