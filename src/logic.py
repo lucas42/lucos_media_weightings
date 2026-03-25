@@ -4,7 +4,7 @@ import math
 def soft_cap(raw_multiplier, cap=100):
 	return cap * (1 - math.exp(-raw_multiplier / cap))
 
-def parse_tag_values(tag_value):
+def parseTagValues(tag_value):
 	"""Parse a tag value that may contain comma-separated URIs into a set of trimmed values."""
 	if not tag_value:
 		return set()
@@ -60,8 +60,8 @@ def getWeighting(track, currentDateTime, isEurovision = False, currentItems = No
 
 	# Apply current event multipliers based on about/mentions tags
 	if currentItems:
-		about_uris = parse_tag_values(track['tags'].get('about', ''))
-		mentions_uris = parse_tag_values(track['tags'].get('mentions', ''))
+		about_uris = parseTagValues(track['tags'].get('about', ''))
+		mentions_uris = parseTagValues(track['tags'].get('mentions', ''))
 		current_uris = {item['uri'] for item in currentItems}
 
 		for uri in current_uris:

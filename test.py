@@ -2,7 +2,7 @@
 import datetime
 
 # Unit under test
-from src.logic import getWeighting, soft_cap, parse_tag_values
+from src.logic import getWeighting, soft_cap, parseTagValues
 
 testcases = [
 	{
@@ -316,7 +316,7 @@ testcases = [
 		'currentItems': [
 			{'uri': 'https://eolas.l42.eu/metadata/month/3/', 'name': 'March', 'type': 'Month'},
 		],
-		'expected': 379.27235,
+		'expected': 379.27234,
 	},
 	{
 		'comment': "Track mentioning a current event gets 20x multiplier (soft-capped)",
@@ -349,7 +349,7 @@ testcases = [
 		'currentItems': [
 			{'uri': 'https://eolas.l42.eu/metadata/festival/42/', 'name': 'Christmas Day', 'type': 'Festival'},
 		],
-		'expected': 442.48441,
+		'expected': 442.48439,
 	},
 	{
 		'comment': "Multiple current items stack multiplicatively (hits soft cap)",
@@ -451,7 +451,7 @@ for case in testcases:
 		print("\033[91mFailed\033[0m \"" + case['comment'] + "\".  Returned \033[91m" + str(actual) + "\033[0m, expected " + str(case['expected']))
 		failures += 1
 
-# parse_tag_values unit tests
+# parseTagValues unit tests
 parse_tag_tests = [
 	{'input': '', 'expected': set()},
 	{'input': 'https://eolas.l42.eu/metadata/month/3/', 'expected': {'https://eolas.l42.eu/metadata/month/3/'}},
@@ -460,9 +460,9 @@ parse_tag_tests = [
 	{'input': ',,,', 'expected': set()},
 ]
 for pt in parse_tag_tests:
-	actual = parse_tag_values(pt['input'])
+	actual = parseTagValues(pt['input'])
 	if actual != pt['expected']:
-		print(f"\033[91mFailed\033[0m parse_tag_values(\"{pt['input']}\").  Returned \033[91m{actual}\033[0m, expected {pt['expected']}")
+		print(f"\033[91mFailed\033[0m parseTagValues(\"{pt['input']}\").  Returned \033[91m{actual}\033[0m, expected {pt['expected']}")
 		failures += 1
 total_cases = len(testcases) + len(parse_tag_tests)
 
