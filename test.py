@@ -1,13 +1,8 @@
 #! /usr/local/bin/python3
 import datetime
-import math
 
 # Unit under test
 from src.logic import getWeighting, soft_cap
-
-def expected_with_cap(base, multiplier, cap=100):
-	"""Helper to compute expected weighting with soft cap applied"""
-	return base * soft_cap(multiplier, cap)
 
 testcases = [
 	{
