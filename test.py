@@ -2,7 +2,7 @@
 import datetime
 
 # Unit under test
-from src.logic import getWeighting
+from src.logic import getWeighting, soft_cap
 
 testcases = [
 	{
@@ -16,7 +16,7 @@ testcases = [
 			'collections': [],
 			'duration': 500,
 		},
-		'expected': 5,
+		'expected': 4.97508,
 	},
 	{
 		'comment': "Weightings follow Ratings",
@@ -29,7 +29,7 @@ testcases = [
 			},
 			'collections': [],
 		},
-		'expected': 7.1,
+		'expected': 7.06462,
 	},
 	{
 		'comment': "Lowest ratings are rated zero",
@@ -105,7 +105,7 @@ testcases = [
 			],
 		},
 		'datetime': "2050-09-29",
-		'expected': 0.082,
+		'expected': 0.08159,
 	},
 	{
 		'comment': "Christmas music is more likely during Christmas",
@@ -124,7 +124,7 @@ testcases = [
 			],
 		},
 		'datetime': "2012-12-02",
-		'expected': 82,
+		'expected': 78.03332,
 	},
 	{
 		'comment': "Hallowe'en music is more likely at end of October",
@@ -141,7 +141,7 @@ testcases = [
 			],
 		},
 		'datetime': "1998-10-30",
-		'expected': 325,
+		'expected': 255.75507,
 	},
 	{
 		'comment': "Eurovision music is more likely during the Eurovision Song Contest",
@@ -158,7 +158,7 @@ testcases = [
 			],
 		},
 		'isEurovision': True,
-		'expected': 920,
+		'expected': 581.55091,
 	},
 	{
 		'comment': "New music added in the past 2 weeks is more likely",
@@ -172,7 +172,7 @@ testcases = [
 			'collections': [],
 		},
 		'datetime': "2030-02-10T12:30",
-		'expected': 70,
+		'expected': 66.61381,
 	},
 	{
 		'comment': "Brand new music added in the past 24 hours is very likely",
@@ -186,7 +186,7 @@ testcases = [
 			'collections': [],
 		},
 		'datetime': "2020-03-05T12:30",
-		'expected': 800,
+		'expected': 505.69645,
 	},
 	{
 		'comment': "Music added more than a fortnight ago is same as default",
@@ -200,7 +200,7 @@ testcases = [
 			'collections': [],
 		},
 		'datetime': "2025-09-05T12:30",
-		'expected': 8.4,
+		'expected': 8.35814,
 	},
 	{
 		'comment': "Invalid added tag is ignored",
@@ -214,7 +214,7 @@ testcases = [
 			'collections': [],
 		},
 		'datetime': "1990-09-05T12:30",
-		'expected': 7.7,
+		'expected': 7.66163,
 	},
 	{
 		'comment': "Added tags with a trailing Z are parsed as expected",
@@ -228,7 +228,7 @@ testcases = [
 			'collections': [],
 		},
 		'datetime': "2030-02-10T12:30",
-		'expected': 80,
+		'expected': 76.13007,
 	},
 	{
 		'comment': "Really long tracks (eg full albums) are zero weighted",
@@ -257,9 +257,73 @@ testcases = [
 		},
 		'expected': 0,
 	},
+	{
+		'comment': "Soft cap preserves rating ratios: 8 is always 2x a 4",
+		'payload_a': {
+			'url': "http://example.com/a.mp3",
+			'tags': {
+				'title': 'Track A',
+				'rating': "8",
+				'added': "2020-03-04T21:21",
+			},
+			'collections': [{'slug': 'halloween'}],
+		},
+		'payload_b': {
+			'url': "http://example.com/b.mp3",
+			'tags': {
+				'title': 'Track B',
+				'rating': "4",
+				'added': "2020-03-04T21:21",
+			},
+			'collections': [{'slug': 'halloween'}],
+		},
+		'datetime': "2020-10-30T12:00",
+		'ratio_test': True,
+		'expected_ratio': 2.0,
+	},
+	{
+		'comment': "Soft cap function itself: soft_cap(1, 100) ≈ 1",
+		'soft_cap_test': True,
+		'input': 1,
+		'cap': 100,
+		'expected': 0.99502,
+	},
+	{
+		'comment': "Soft cap function itself: soft_cap(100, 100) ≈ 63.21",
+		'soft_cap_test': True,
+		'input': 100,
+		'cap': 100,
+		'expected': 63.21206,
+	},
+	{
+		'comment': "Soft cap function itself: soft_cap(5000, 100) approaches 100",
+		'soft_cap_test': True,
+		'input': 5000,
+		'cap': 100,
+		'expected': 100,
+	},
 ]
 failures = 0
 for case in testcases:
+
+	# Direct soft_cap function tests
+	if case.get('soft_cap_test'):
+		actual = soft_cap(case['input'], case['cap'])
+		if (round(actual, 5) != round(case['expected'], 5)):
+			print("\033[91mFailed\033[0m \"" + case['comment'] + "\".  Returned \033[91m" + str(actual) + "\033[0m, expected " + str(case['expected']))
+			failures += 1
+		continue
+
+	# Rating ratio preservation tests
+	if case.get('ratio_test'):
+		currentDateTime = datetime.datetime.fromisoformat(case['datetime'])
+		weight_a = getWeighting(case['payload_a'], currentDateTime)
+		weight_b = getWeighting(case['payload_b'], currentDateTime)
+		actual_ratio = weight_a / weight_b if weight_b != 0 else float('inf')
+		if (round(actual_ratio, 5) != round(case['expected_ratio'], 5)):
+			print("\033[91mFailed\033[0m \"" + case['comment'] + "\".  Returned ratio \033[91m" + str(actual_ratio) + "\033[0m, expected " + str(case['expected_ratio']))
+			failures += 1
+		continue
 
 	if "isEurovision" not in case:
 		case["isEurovision"] = False
