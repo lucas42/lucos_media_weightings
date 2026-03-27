@@ -1,5 +1,6 @@
 #! /usr/local/bin/python3
 from media_api import getAllTracks, updateWeighting
+from time_api import getCurrentItems
 from loganne import updateLoganne
 from schedule_tracker import updateScheduleTracker
 from log_util import info, error
@@ -11,10 +12,14 @@ updateLoganne(
 )
 info("Checking media library for weightings which have changed...")
 
+# Fetch current temporal items once for the entire run
+currentItems = getCurrentItems()
+info(f"Fetched {len(currentItems)} current items from lucos_time")
+
 # Iterate through every track in the media API and try updating its weighting
 for track in getAllTracks():
 	try:
-		response = updateWeighting(track)
+		response = updateWeighting(track, currentItems=currentItems)
 		if response != "Weighting stayed the same":
 			info(track['url'] + " - "+  response)
 	except Exception as err:

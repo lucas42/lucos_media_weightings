@@ -1,6 +1,7 @@
 import json, sys, os, requests
 from datetime import datetime
 from logic import getWeighting
+from time_api import getCurrentItems
 from log_util import info, error
 
 if not os.environ.get("MEDIA_API"):
@@ -48,13 +49,15 @@ class getAllTracks:
 		else:
 			raise StopIteration
 
-def updateWeighting(track):
+def updateWeighting(track, currentItems=None):
 	verbose = False
 	if ('weighting' in track):
 		oldweighting = track['weighting']
 	else:
 		oldweighting = "Not set"
-	weighting = getWeighting(track, datetime.utcnow())
+	if currentItems is None:
+		currentItems = getCurrentItems()
+	weighting = getWeighting(track, datetime.utcnow(), currentItems=currentItems)
 	if (oldweighting != weighting):
 		if verbose:
 			print(json.dumps(track, indent=2))
