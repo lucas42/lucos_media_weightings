@@ -12,7 +12,7 @@ if time_api_url.endswith("/"):
 def getCurrentItems():
 	"""Fetch current temporal items from lucos_time."""
 	try:
-		response = requests.get(time_api_url + "/current-items")
+		response = requests.get(time_api_url + "/current-items", headers={'User-Agent': "lucos_media_weightings"})
 		response.raise_for_status()
 		data = response.json()
 		return data.get('items', [])
