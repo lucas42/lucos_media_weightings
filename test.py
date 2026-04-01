@@ -2,7 +2,7 @@
 import datetime
 
 # Unit under test
-from src.logic import getWeighting, soft_cap, parseTagValues
+from src.logic import getWeighting, soft_cap, getTagValue, getTagUris
 
 testcases = [
 	{
@@ -10,8 +10,8 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/audio.mp3",
 			'tags': {
-				'title': 'Joelyn',
-				'artist': 'Dolly Parton',
+				'title': [{'name': 'Joelyn'}],
+				'artist': [{'name': 'Dolly Parton'}],
 			},
 			'collections': [],
 			'duration': 500,
@@ -23,9 +23,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/sumbarine.mp3",
 			'tags': {
-				'title': 'Yellow Submarine',
-				'artist': 'The Beatles',
-				'rating': "7.1",
+				'title': [{'name': 'Yellow Submarine'}],
+				'artist': [{'name': 'The Beatles'}],
+				'rating': [{'name': '7.1'}],
 			},
 			'collections': [],
 		},
@@ -36,9 +36,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/random-south-park-track",
 			'tags': {
-				'title': 'Singing rude stuff in silly voices',
-				'artist': 'South Park',
-				'rating': "0.4",
+				'title': [{'name': 'Singing rude stuff in silly voices'}],
+				'artist': [{'name': 'South Park'}],
+				'rating': [{'name': '0.4'}],
 			},
 			'collections': [],
 		},
@@ -48,8 +48,8 @@ testcases = [
 		'comment': "Speech tracks are rated zero",
 		'payload': {
 			'tags': {
-				'title': 'Orson Welles, H.G.Wells - War Of The Worlds (The Original Broadcast Oct 30, 193',
-				'artist': 'Orson Welles',
+				'title': [{'name': 'Orson Welles, H.G.Wells - War Of The Worlds (The Original Broadcast Oct 30, 193'}],
+				'artist': [{'name': 'Orson Welles'}],
 			},
 			'collections': [
 				{
@@ -64,7 +64,7 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/bang.mp3",
 			'tags': {
-				'title': 'Explosion',
+				'title': [{'name': 'Explosion'}],
 			},
 			'collections': [
 				{
@@ -79,7 +79,7 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/podcast-episode3.mp3",
 			'tags': {
-				'title': 'Episode 3',
+				'title': [{'name': 'Episode 3'}],
 			},
 			'collections': [
 				{
@@ -94,9 +94,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/xmas.mp3",
 			'tags': {
-				'title': 'Christmas Time',
-				'artist': 'The Darkness',
-				'rating': "8.2",
+				'title': [{'name': 'Christmas Time'}],
+				'artist': [{'name': 'The Darkness'}],
+				'rating': [{'name': '8.2'}],
 			},
 			'collections': [
 				{
@@ -112,9 +112,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/xmas.mp3",
 			'tags': {
-				'title': 'Christmas Time',
-				'artist': 'The Darkness',
-				'rating': "8.2",
+				'title': [{'name': 'Christmas Time'}],
+				'artist': [{'name': 'The Darkness'}],
+				'rating': [{'name': '8.2'}],
 			},
 			'collections': [
 				{
@@ -131,8 +131,8 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/scary.mp3",
 			'tags': {
-				'title': 'Monster Mash',
-				'rating': "6.5",
+				'title': [{'name': 'Monster Mash'}],
+				'rating': [{'name': '6.5'}],
 			},
 			'collections': [
 				{
@@ -148,8 +148,8 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/cheese.mp3",
 			'tags': {
-				'title': 'Wolves of the sea of the Sea',
-				'rating': "9.2",
+				'title': [{'name': 'Wolves of the sea of the Sea'}],
+				'rating': [{'name': '9.2'}],
 			},
 			'collections': [
 				{
@@ -165,9 +165,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/new.mp3",
 			'tags': {
-				'title': 'New Music just dropped',
-				'rating': "7",
-				'added': "2030-02-01T23:00",
+				'title': [{'name': 'New Music just dropped'}],
+				'rating': [{'name': '7'}],
+				'added': [{'name': '2030-02-01T23:00'}],
 			},
 			'collections': [],
 		},
@@ -179,9 +179,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/brand-new.mp3",
 			'tags': {
-				'title': 'Brand New Music just dropped',
-				'rating': "8",
-				'added': "2020-03-04T21:21",
+				'title': [{'name': 'Brand New Music just dropped'}],
+				'rating': [{'name': '8'}],
+				'added': [{'name': '2020-03-04T21:21'}],
 			},
 			'collections': [],
 		},
@@ -193,9 +193,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/not-new.mp3",
 			'tags': {
-				'title': 'Older Music',
-				'rating': "8.4",
-				'added': "2025-08-08T21:21",
+				'title': [{'name': 'Older Music'}],
+				'rating': [{'name': '8.4'}],
+				'added': [{'name': '2025-08-08T21:21'}],
 			},
 			'collections': [],
 		},
@@ -207,9 +207,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/song.mp3",
 			'tags': {
-				'title': 'Music of Unknown Age',
-				'rating': "7.7",
-				'added': "1209238492842098",
+				'title': [{'name': 'Music of Unknown Age'}],
+				'rating': [{'name': '7.7'}],
+				'added': [{'name': '1209238492842098'}],
 			},
 			'collections': [],
 		},
@@ -221,9 +221,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/new.mp3",
 			'tags': {
-				'title': 'More New Music just dropped',
-				'rating': "8",
-				'added': "2030-02-01T23:00Z",
+				'title': [{'name': 'More New Music just dropped'}],
+				'rating': [{'name': '8'}],
+				'added': [{'name': '2030-02-01T23:00Z'}],
 			},
 			'collections': [],
 		},
@@ -235,7 +235,7 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/full-album.mp3",
 			'tags': {
-				'title': 'The Best of Some Band - Full Album',
+				'title': [{'name': 'The Best of Some Band - Full Album'}],
 			},
 			'collections': [],
 			'duration': 1912,
@@ -247,7 +247,7 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/karaoke-track.mp3",
 			'tags': {
-				'title': 'I Will Survive - Karaoke Backing Track',
+				'title': [{'name': 'I Will Survive - Karaoke Backing Track'}],
 			},
 			'collections': [
 				{
@@ -262,18 +262,18 @@ testcases = [
 		'payload_a': {
 			'url': "http://example.com/a.mp3",
 			'tags': {
-				'title': 'Track A',
-				'rating': "8",
-				'added': "2020-03-04T21:21",
+				'title': [{'name': 'Track A'}],
+				'rating': [{'name': '8'}],
+				'added': [{'name': '2020-03-04T21:21'}],
 			},
 			'collections': [{'slug': 'halloween'}],
 		},
 		'payload_b': {
 			'url': "http://example.com/b.mp3",
 			'tags': {
-				'title': 'Track B',
-				'rating': "4",
-				'added': "2020-03-04T21:21",
+				'title': [{'name': 'Track B'}],
+				'rating': [{'name': '4'}],
+				'added': [{'name': '2020-03-04T21:21'}],
 			},
 			'collections': [{'slug': 'halloween'}],
 		},
@@ -307,9 +307,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/march-song.mp3",
 			'tags': {
-				'title': 'March Song',
-				'rating': "6",
-				'about': "https://eolas.l42.eu/metadata/month/3/",
+				'title': [{'name': 'March Song'}],
+				'rating': [{'name': '6'}],
+				'about': [{'name': 'March', 'uri': 'https://eolas.l42.eu/metadata/month/3/'}],
 			},
 			'collections': [],
 		},
@@ -323,9 +323,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/mentions-march.mp3",
 			'tags': {
-				'title': 'Spring Vibes',
-				'rating': "5",
-				'mentions': "https://eolas.l42.eu/metadata/month/3/",
+				'title': [{'name': 'Spring Vibes'}],
+				'rating': [{'name': '5'}],
+				'mentions': [{'name': 'March', 'uri': 'https://eolas.l42.eu/metadata/month/3/'}],
 			},
 			'collections': [],
 		},
@@ -339,10 +339,10 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/about-and-mentions.mp3",
 			'tags': {
-				'title': 'Festival Song',
-				'rating': "7",
-				'about': "https://eolas.l42.eu/metadata/festival/42/",
-				'mentions': "https://eolas.l42.eu/metadata/festival/42/",
+				'title': [{'name': 'Festival Song'}],
+				'rating': [{'name': '7'}],
+				'about': [{'name': 'Christmas Day', 'uri': 'https://eolas.l42.eu/metadata/festival/42/'}],
+				'mentions': [{'name': 'Christmas Day', 'uri': 'https://eolas.l42.eu/metadata/festival/42/'}],
 			},
 			'collections': [],
 		},
@@ -356,9 +356,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/multi-match.mp3",
 			'tags': {
-				'title': 'Monday March Song',
-				'rating': "5",
-				'about': "https://eolas.l42.eu/metadata/month/3/,https://eolas.l42.eu/metadata/dayofweek/1/",
+				'title': [{'name': 'Monday March Song'}],
+				'rating': [{'name': '5'}],
+				'about': [{'name': 'March', 'uri': 'https://eolas.l42.eu/metadata/month/3/'}, {'name': 'Monday', 'uri': 'https://eolas.l42.eu/metadata/dayofweek/1/'}],
 			},
 			'collections': [],
 		},
@@ -373,9 +373,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/no-match.mp3",
 			'tags': {
-				'title': 'Random Song',
-				'rating': "6",
-				'about': "https://eolas.l42.eu/metadata/month/12/",
+				'title': [{'name': 'Random Song'}],
+				'rating': [{'name': '6'}],
+				'about': [{'name': 'December', 'uri': 'https://eolas.l42.eu/metadata/month/12/'}],
 			},
 			'collections': [],
 		},
@@ -389,9 +389,9 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/no-events.mp3",
 			'tags': {
-				'title': 'Normal Song',
-				'rating': "8",
-				'about': "https://eolas.l42.eu/metadata/month/3/",
+				'title': [{'name': 'Normal Song'}],
+				'rating': [{'name': '8'}],
+				'about': [{'name': 'March', 'uri': 'https://eolas.l42.eu/metadata/month/3/'}],
 			},
 			'collections': [],
 		},
@@ -403,10 +403,10 @@ testcases = [
 		'payload': {
 			'url': "http://example.com/mixed-match.mp3",
 			'tags': {
-				'title': 'Mixed Match',
-				'rating': "4",
-				'about': "https://eolas.l42.eu/metadata/month/3/",
-				'mentions': "https://eolas.l42.eu/metadata/dayofweek/1/",
+				'title': [{'name': 'Mixed Match'}],
+				'rating': [{'name': '4'}],
+				'about': [{'name': 'March', 'uri': 'https://eolas.l42.eu/metadata/month/3/'}],
+				'mentions': [{'name': 'Monday', 'uri': 'https://eolas.l42.eu/metadata/dayofweek/1/'}],
 			},
 			'collections': [],
 		},
@@ -451,20 +451,32 @@ for case in testcases:
 		print("\033[91mFailed\033[0m \"" + case['comment'] + "\".  Returned \033[91m" + str(actual) + "\033[0m, expected " + str(case['expected']))
 		failures += 1
 
-# parseTagValues unit tests
-parse_tag_tests = [
-	{'input': '', 'expected': set()},
-	{'input': 'https://eolas.l42.eu/metadata/month/3/', 'expected': {'https://eolas.l42.eu/metadata/month/3/'}},
-	{'input': 'https://eolas.l42.eu/metadata/month/3/,https://eolas.l42.eu/metadata/dayofweek/1/', 'expected': {'https://eolas.l42.eu/metadata/month/3/', 'https://eolas.l42.eu/metadata/dayofweek/1/'}},
-	{'input': ' https://eolas.l42.eu/metadata/month/3/ , https://eolas.l42.eu/metadata/dayofweek/1/ ', 'expected': {'https://eolas.l42.eu/metadata/month/3/', 'https://eolas.l42.eu/metadata/dayofweek/1/'}},
-	{'input': ',,,', 'expected': set()},
+# getTagUris unit tests
+get_tag_uris_tests = [
+	{'input': {}, 'key': 'about', 'expected': set()},
+	{'input': {'about': [{'name': 'March', 'uri': 'https://eolas.l42.eu/metadata/month/3/'}]}, 'key': 'about', 'expected': {'https://eolas.l42.eu/metadata/month/3/'}},
+	{'input': {'about': [{'name': 'March', 'uri': 'https://eolas.l42.eu/metadata/month/3/'}, {'name': 'Monday', 'uri': 'https://eolas.l42.eu/metadata/dayofweek/1/'}]}, 'key': 'about', 'expected': {'https://eolas.l42.eu/metadata/month/3/', 'https://eolas.l42.eu/metadata/dayofweek/1/'}},
+	{'input': {'about': [{'name': 'No URI tag'}]}, 'key': 'about', 'expected': set()},
+	{'input': {'about': []}, 'key': 'about', 'expected': set()},
 ]
-for pt in parse_tag_tests:
-	actual = parseTagValues(pt['input'])
+for pt in get_tag_uris_tests:
+	actual = getTagUris(pt['input'], pt['key'])
 	if actual != pt['expected']:
-		print(f"\033[91mFailed\033[0m parseTagValues(\"{pt['input']}\").  Returned \033[91m{actual}\033[0m, expected {pt['expected']}")
+		print(f"\033[91mFailed\033[0m getTagUris({pt['input']}, \"{pt['key']}\").  Returned \033[91m{actual}\033[0m, expected {pt['expected']}")
 		failures += 1
-total_cases = len(testcases) + len(parse_tag_tests)
+
+# getTagValue unit tests
+get_tag_value_tests = [
+	{'input': {}, 'key': 'rating', 'expected': None},
+	{'input': {'rating': [{'name': '7.5'}]}, 'key': 'rating', 'expected': '7.5'},
+	{'input': {'rating': []}, 'key': 'rating', 'expected': None},
+]
+for pt in get_tag_value_tests:
+	actual = getTagValue(pt['input'], pt['key'])
+	if actual != pt['expected']:
+		print(f"\033[91mFailed\033[0m getTagValue({pt['input']}, \"{pt['key']}\").  Returned \033[91m{actual}\033[0m, expected {pt['expected']}")
+		failures += 1
+total_cases = len(testcases) + len(get_tag_uris_tests) + len(get_tag_value_tests)
 
 if (failures > 0):
 	print("\033[91m"+str(failures) + " failures\033[0m in " + str(total_cases) + " cases.")
