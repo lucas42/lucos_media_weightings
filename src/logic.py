@@ -4,18 +4,24 @@ import math
 def soft_cap(raw_multiplier, cap=100):
 	return cap * (1 - math.exp(-raw_multiplier / cap))
 
-def parseTagValues(tag_value):
-	"""Parse a tag value that may contain comma-separated URIs into a set of trimmed values."""
-	if not tag_value:
+def getTagValue(tags, key, default=None):
+	"""Get the name of the first value of a V3 tag."""
+	if key not in tags or not tags[key]:
+		return default
+	return tags[key][0].get('name', default)
+
+def getTagUris(tags, key):
+	"""Get the set of URIs from a V3 tag array."""
+	if key not in tags:
 		return set()
-	return {v.strip() for v in tag_value.split(',') if v.strip()}
+	return {v['uri'] for v in tags[key] if v.get('uri')}
 
 def getWeighting(track, currentDateTime, isEurovision = False, currentItems = None):
 	collection_slugs = list(map(lambda collection: collection['slug'], track['collections']))
 
 	weighting = 5
 	if 'rating' in track['tags']:
-		rating = float(track['tags']['rating'])
+		rating = float(getTagValue(track['tags'], 'rating', '0'))
 		if rating < 2:
 			weighting = 0
 		else:
@@ -41,7 +47,7 @@ def getWeighting(track, currentDateTime, isEurovision = False, currentItems = No
 
 	if 'added' in track['tags']:
 		try:
-			addedTag = track['tags']['added']
+			addedTag = getTagValue(track['tags'], 'added')
 
 			# RFC3339 and ISO 8601 are similar, but not exactly the same
 			# But if one ends in a Z (for Zulu-time), we can strip that off the end and treat it as if it's not there
@@ -60,8 +66,8 @@ def getWeighting(track, currentDateTime, isEurovision = False, currentItems = No
 
 	# Apply current event multipliers based on about/mentions tags
 	if currentItems:
-		about_uris = parseTagValues(track['tags'].get('about', ''))
-		mentions_uris = parseTagValues(track['tags'].get('mentions', ''))
+		about_uris = getTagUris(track['tags'], 'about')
+		mentions_uris = getTagUris(track['tags'], 'mentions')
 		current_uris = {item['uri'] for item in currentItems}
 
 		for uri in current_uris:

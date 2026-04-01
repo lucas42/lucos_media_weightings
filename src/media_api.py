@@ -18,27 +18,6 @@ if not os.environ.get("KEY_LUCOS_MEDIA_METADATA_API"):
 	sys.exit(1)
 apiKey = os.environ.get("KEY_LUCOS_MEDIA_METADATA_API")
 
-def normalizeV3Tags(tags):
-	"""Convert V3 structured tags to flat strings for backwards compatibility.
-
-	V3 tags are dicts of predicate to arrays of {"name": ..., "uri": ...} objects.
-	This converts them to simple strings (single-value) or comma-separated strings
-	(multi-value), matching the format logic.py expects.
-	"""
-	result = {}
-	for key, values in tags.items():
-		if not isinstance(values, list):
-			result[key] = values
-			continue
-		names = [v.get("name", "") for v in values if v.get("name", "")]
-		if not names:
-			result[key] = None
-		elif len(names) == 1:
-			result[key] = names[0]
-		else:
-			result[key] = ",".join(names)
-	return result
-
 class getAllTracks:
 	"""Returns an iterator covering all tracks in the media API
 
@@ -61,8 +40,7 @@ class getAllTracks:
 
 		# If there's none left, fetch the next page
 		self.page += 1
-		tracks = requests.get(apiurl+"/v3/tracks?page="+str(self.page), headers={"Authorization":"Bearer "+apiKey}).json()['tracks']
-		self.tracks = [normalizeTrack(t) for t in tracks]
+		self.tracks = requests.get(apiurl+"/v3/tracks?page="+str(self.page), headers={"Authorization":"Bearer "+apiKey}).json()['tracks']
 
 		if len(self.tracks) > 0:
 			return self.tracks.pop(0)
@@ -70,15 +48,6 @@ class getAllTracks:
 		# If there's no tracks in the next page, then all tracks have been returned
 		else:
 			raise StopIteration
-
-def normalizeTrack(track):
-	"""Normalize a V3 track response for use with logic.py.
-
-	Converts V3 structured tags to flat strings and maps 'id' field.
-	"""
-	if "tags" in track:
-		track["tags"] = normalizeV3Tags(track["tags"])
-	return track
 
 def updateWeighting(track, currentItems=None):
 	verbose = False
