@@ -24,10 +24,15 @@ def getTrackId(track):
 	return track.get('id') or track.get('trackid')  # TODO: simplify to track['id'] once lucos_media_metadata_api#85 lands
 
 def getTagUris(tags, key):
-	"""Get the set of URIs from a V3 tag array."""
+	"""Get the set of URIs from a v3 tag array: [{name, uri}, ...].
+	Returns an empty set for v2 plain string values (backwards compat with loganne webhooks
+	until lucos_media_metadata_api#85; plain strings have no URI)."""
 	if key not in tags:
 		return set()
-	return {v['uri'] for v in tags[key] if v.get('uri')}
+	val = tags[key]
+	if isinstance(val, str):  # TODO: remove once lucos_media_metadata_api#85 lands
+		return set()
+	return {v['uri'] for v in val if v.get('uri')}
 
 def getWeighting(track, currentDateTime, isEurovision = False, currentItems = None):
 	collection_slugs = list(map(lambda collection: collection['slug'], track['collections']))
