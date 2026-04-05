@@ -2,7 +2,7 @@
 import datetime
 
 # Unit under test
-from src.logic import getWeighting, soft_cap, getTagValue, getTagUris
+from src.logic import getWeighting, soft_cap, getTagValue, getTagUris, getTrackId
 
 testcases = [
 	{
@@ -416,6 +416,18 @@ testcases = [
 		],
 		'expected': 400,
 	},
+	{
+		'comment': "v2 loganne webhook format (plain string tags) is handled — backwards compat until lucos_media_metadata_api#85",
+		'payload': {
+			'url': "http://example.com/rated.mp3",
+			'tags': {
+				'title': 'Rated Song',
+				'rating': '7.1',
+			},
+			'collections': [],
+		},
+		'expected': 7.06462,
+	},
 ]
 failures = 0
 for case in testcases:
@@ -470,13 +482,28 @@ get_tag_value_tests = [
 	{'input': {}, 'key': 'rating', 'expected': None},
 	{'input': {'rating': [{'name': '7.5'}]}, 'key': 'rating', 'expected': '7.5'},
 	{'input': {'rating': []}, 'key': 'rating', 'expected': None},
+	# v2 plain string format — backwards compat for loganne webhooks until lucos_media_metadata_api#85 lands
+	{'input': {'rating': '4.3'}, 'key': 'rating', 'expected': '4.3'},
+	{'input': {'added': '2030-02-01T23:00'}, 'key': 'added', 'expected': '2030-02-01T23:00'},
 ]
 for pt in get_tag_value_tests:
 	actual = getTagValue(pt['input'], pt['key'])
 	if actual != pt['expected']:
 		print(f"\033[91mFailed\033[0m getTagValue({pt['input']}, \"{pt['key']}\").  Returned \033[91m{actual}\033[0m, expected {pt['expected']}")
 		failures += 1
-total_cases = len(testcases) + len(get_tag_uris_tests) + len(get_tag_value_tests)
+# getTrackId unit tests
+get_track_id_tests = [
+	{'input': {'id': 99}, 'expected': 99},                           # v3 format (canonical)
+	{'input': {'trackid': 42}, 'expected': 42},                      # v2 loganne format (backwards compat, remove after lucos_media_metadata_api#85)
+	{'input': {'trackid': 17, 'id': 99}, 'expected': 99},            # both present: v3 wins
+]
+for pt in get_track_id_tests:
+	actual = getTrackId(pt['input'])
+	if actual != pt['expected']:
+		print(f"\033[91mFailed\033[0m getTrackId({pt['input']}).  Returned \033[91m{actual}\033[0m, expected {pt['expected']}")
+		failures += 1
+
+total_cases = len(testcases) + len(get_tag_uris_tests) + len(get_tag_value_tests) + len(get_track_id_tests)
 
 if (failures > 0):
 	print("\033[91m"+str(failures) + " failures\033[0m in " + str(total_cases) + " cases.")

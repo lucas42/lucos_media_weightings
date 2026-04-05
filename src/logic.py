@@ -5,10 +5,23 @@ def soft_cap(raw_multiplier, cap=100):
 	return cap * (1 - math.exp(-raw_multiplier / cap))
 
 def getTagValue(tags, key, default=None):
-	"""Get the name of the first value of a V3 tag."""
+	"""Get the value of a tag from a v3 array-of-objects format: [{name, uri}, ...].
+	Also accepts plain strings for backwards compatibility with v2 loganne webhook payloads
+	(lucos_media_metadata_api still sends v2 in webhooks; see lucos_media_metadata_api#85).
+	Remove the isinstance(str) branch once #85 is merged and deployed."""
 	if key not in tags or not tags[key]:
 		return default
-	return tags[key][0].get('name', default)
+	val = tags[key]
+	if isinstance(val, str):  # TODO: remove once lucos_media_metadata_api#85 lands
+		return val
+	return val[0].get('name', default)
+
+def getTrackId(track):
+	"""Get the track ID from a v3 track payload ('id' field).
+	Also accepts 'trackid' for backwards compatibility with v2 loganne webhook payloads
+	(lucos_media_metadata_api still sends v2 in webhooks; see lucos_media_metadata_api#85).
+	Remove the trackid fallback once #85 is merged and deployed."""
+	return track.get('id') or track.get('trackid')  # TODO: simplify to track['id'] once lucos_media_metadata_api#85 lands
 
 def getTagUris(tags, key):
 	"""Get the set of URIs from a V3 tag array."""
