@@ -52,8 +52,8 @@ class WeightingHandler(BaseHTTPRequestHandler):
 	def singleTrackController(self):
 		try:
 			event = json.loads(self.post_data)
-		except json.decoder.JSONDecodeError as error:
-			self.send_error(400, "Invalid json", str(error))
+		except json.decoder.JSONDecodeError as json_err:
+			self.send_error(400, "Invalid json", str(json_err))
 			return
 		try:
 			response = updateWeighting(event["track"])
