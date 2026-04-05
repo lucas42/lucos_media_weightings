@@ -470,6 +470,8 @@ get_tag_uris_tests = [
 	{'input': {'about': [{'name': 'March', 'uri': 'https://eolas.l42.eu/metadata/month/3/'}, {'name': 'Monday', 'uri': 'https://eolas.l42.eu/metadata/dayofweek/1/'}]}, 'key': 'about', 'expected': {'https://eolas.l42.eu/metadata/month/3/', 'https://eolas.l42.eu/metadata/dayofweek/1/'}},
 	{'input': {'about': [{'name': 'No URI tag'}]}, 'key': 'about', 'expected': set()},
 	{'input': {'about': []}, 'key': 'about', 'expected': set()},
+	# v2 plain string format — backwards compat for loganne webhooks until lucos_media_metadata_api#85 lands
+	{'input': {'about': 'some plain string'}, 'key': 'about', 'expected': set()},
 ]
 for pt in get_tag_uris_tests:
 	actual = getTagUris(pt['input'], pt['key'])
