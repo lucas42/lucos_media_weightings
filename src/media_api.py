@@ -1,6 +1,6 @@
 import json, sys, os, requests
 from datetime import datetime
-from logic import getWeighting
+from logic import getWeighting, getTrackId
 from time_api import getCurrentItems
 from log_util import info, error
 
@@ -61,7 +61,7 @@ def updateWeighting(track, currentItems=None):
 	if (oldweighting != weighting):
 		if verbose:
 			print(json.dumps(track, indent=2))
-		result = requests.put(apiurl+"/v3/tracks/"+str(track['trackid'])+"/weighting", data=str(weighting), allow_redirects=False, headers={"Authorization":"Bearer "+apiKey})
+		result = requests.put(apiurl+"/v3/tracks/"+str(getTrackId(track))+"/weighting", data=str(weighting), allow_redirects=False, headers={"Authorization":"Bearer "+apiKey})
 		if result.is_redirect:
 			raise Exception("Redirect returned by server.  Make sure you're using the latest API URL.")
 		elif result.ok:

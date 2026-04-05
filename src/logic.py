@@ -14,6 +14,11 @@ def getTagValue(tags, key, default=None):
 		return val
 	return val[0].get('name', default)
 
+def getTrackId(track):
+	"""Get the track ID, handling both v2 ('trackid') and v3 ('id') field names.
+	v2 loganne payloads use 'trackid'; v3 payloads (after lucos_media_metadata_api#85) use 'id'."""
+	return track.get('trackid') or track.get('id')
+
 def getTagUris(tags, key):
 	"""Get the set of URIs from a V3 tag array."""
 	if key not in tags:

@@ -2,7 +2,7 @@
 import datetime
 
 # Unit under test
-from src.logic import getWeighting, soft_cap, getTagValue, getTagUris
+from src.logic import getWeighting, soft_cap, getTagValue, getTagUris, getTrackId
 
 testcases = [
 	{
@@ -491,7 +491,19 @@ for pt in get_tag_value_tests:
 	if actual != pt['expected']:
 		print(f"\033[91mFailed\033[0m getTagValue({pt['input']}, \"{pt['key']}\").  Returned \033[91m{actual}\033[0m, expected {pt['expected']}")
 		failures += 1
-total_cases = len(testcases) + len(get_tag_uris_tests) + len(get_tag_value_tests)
+# getTrackId unit tests
+get_track_id_tests = [
+	{'input': {'trackid': 42}, 'expected': 42},                     # v2 loganne format
+	{'input': {'id': 99}, 'expected': 99},                           # v3 loganne format (after lucos_media_metadata_api#85)
+	{'input': {'trackid': 17, 'id': 99}, 'expected': 17},            # both present: v2 wins
+]
+for pt in get_track_id_tests:
+	actual = getTrackId(pt['input'])
+	if actual != pt['expected']:
+		print(f"\033[91mFailed\033[0m getTrackId({pt['input']}).  Returned \033[91m{actual}\033[0m, expected {pt['expected']}")
+		failures += 1
+
+total_cases = len(testcases) + len(get_tag_uris_tests) + len(get_tag_value_tests) + len(get_track_id_tests)
 
 if (failures > 0):
 	print("\033[91m"+str(failures) + " failures\033[0m in " + str(total_cases) + " cases.")
