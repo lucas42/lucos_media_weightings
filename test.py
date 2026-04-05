@@ -417,7 +417,7 @@ testcases = [
 		'expected': 400,
 	},
 	{
-		'comment': "Webhook payload format (plain string tags) is handled correctly",
+		'comment': "v2 loganne webhook format (plain string tags) is handled — backwards compat until lucos_media_metadata_api#85",
 		'payload': {
 			'url': "http://example.com/rated.mp3",
 			'tags': {
@@ -482,7 +482,7 @@ get_tag_value_tests = [
 	{'input': {}, 'key': 'rating', 'expected': None},
 	{'input': {'rating': [{'name': '7.5'}]}, 'key': 'rating', 'expected': '7.5'},
 	{'input': {'rating': []}, 'key': 'rating', 'expected': None},
-	# Plain string format (webhook payloads from lucos_media_metadata_api)
+	# v2 plain string format — backwards compat for loganne webhooks until lucos_media_metadata_api#85 lands
 	{'input': {'rating': '4.3'}, 'key': 'rating', 'expected': '4.3'},
 	{'input': {'added': '2030-02-01T23:00'}, 'key': 'added', 'expected': '2030-02-01T23:00'},
 ]
@@ -493,9 +493,9 @@ for pt in get_tag_value_tests:
 		failures += 1
 # getTrackId unit tests
 get_track_id_tests = [
-	{'input': {'trackid': 42}, 'expected': 42},                     # v2 loganne format
-	{'input': {'id': 99}, 'expected': 99},                           # v3 loganne format (after lucos_media_metadata_api#85)
-	{'input': {'trackid': 17, 'id': 99}, 'expected': 17},            # both present: v2 wins
+	{'input': {'id': 99}, 'expected': 99},                           # v3 format (canonical)
+	{'input': {'trackid': 42}, 'expected': 42},                      # v2 loganne format (backwards compat, remove after lucos_media_metadata_api#85)
+	{'input': {'trackid': 17, 'id': 99}, 'expected': 99},            # both present: v3 wins
 ]
 for pt in get_track_id_tests:
 	actual = getTrackId(pt['input'])
