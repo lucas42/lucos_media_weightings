@@ -416,6 +416,18 @@ testcases = [
 		],
 		'expected': 400,
 	},
+	{
+		'comment': "Webhook payload format (plain string tags) is handled correctly",
+		'payload': {
+			'url': "http://example.com/rated.mp3",
+			'tags': {
+				'title': 'Rated Song',
+				'rating': '7.1',
+			},
+			'collections': [],
+		},
+		'expected': 7.06462,
+	},
 ]
 failures = 0
 for case in testcases:
@@ -470,6 +482,9 @@ get_tag_value_tests = [
 	{'input': {}, 'key': 'rating', 'expected': None},
 	{'input': {'rating': [{'name': '7.5'}]}, 'key': 'rating', 'expected': '7.5'},
 	{'input': {'rating': []}, 'key': 'rating', 'expected': None},
+	# Plain string format (webhook payloads from lucos_media_metadata_api)
+	{'input': {'rating': '4.3'}, 'key': 'rating', 'expected': '4.3'},
+	{'input': {'added': '2030-02-01T23:00'}, 'key': 'added', 'expected': '2030-02-01T23:00'},
 ]
 for pt in get_tag_value_tests:
 	actual = getTagValue(pt['input'], pt['key'])

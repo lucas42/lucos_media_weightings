@@ -5,10 +5,14 @@ def soft_cap(raw_multiplier, cap=100):
 	return cap * (1 - math.exp(-raw_multiplier / cap))
 
 def getTagValue(tags, key, default=None):
-	"""Get the name of the first value of a V3 tag."""
+	"""Get the value of a tag, handling both plain string format (webhook payloads)
+	and V3 array-of-objects format (bulk API fetches)."""
 	if key not in tags or not tags[key]:
 		return default
-	return tags[key][0].get('name', default)
+	val = tags[key]
+	if isinstance(val, str):
+		return val
+	return val[0].get('name', default)
 
 def getTagUris(tags, key):
 	"""Get the set of URIs from a V3 tag array."""

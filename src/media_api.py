@@ -61,7 +61,7 @@ def updateWeighting(track, currentItems=None):
 	if (oldweighting != weighting):
 		if verbose:
 			print(json.dumps(track, indent=2))
-		result = requests.put(apiurl+"/v3/tracks/"+str(track['id'])+"/weighting", data=str(weighting), allow_redirects=False, headers={"Authorization":"Bearer "+apiKey})
+		result = requests.put(apiurl+"/v3/tracks/"+str(track['trackid'])+"/weighting", data=str(weighting), allow_redirects=False, headers={"Authorization":"Bearer "+apiKey})
 		if result.is_redirect:
 			raise Exception("Redirect returned by server.  Make sure you're using the latest API URL.")
 		elif result.ok:
