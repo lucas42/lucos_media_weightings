@@ -1,7 +1,7 @@
 #! /usr/local/bin/python3
 import json, sys, os, traceback
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from media_api import updateWeighting
+from waitress import serve
 
 from log_util import info, error
 
@@ -14,60 +14,54 @@ except ValueError:
 	error("PORT isn't an integer")
 	sys.exit(1)
 
-class WeightingHandler(BaseHTTPRequestHandler):
-	def do_GET(self):
-		info(f"GET {self.path}")
-		if (self.path == "/_info"):
-			self.infoController()
-		else:
-			self.send_error(404, "Page Not Found")
-		self.wfile.flush()
-		self.connection.close()
-	def do_POST(self):
-		info(f"POST {self.path}")
-		self.post_data = self.rfile.read(int(self.headers['Content-Length']))
-		if (self.path == "/weight-track"):
-			self.singleTrackController()
-		else:
-			self.send_error(404, "Page Not Found")
-		self.wfile.flush()
-		self.connection.close()
-	def infoController(self):
-		output = {
-			"system": "lucos_media_weightings",
-			"ci": {
-				"circle": "gh/lucas42/lucos_media_weightings",
-			},
-			"checks": {
-			},
-			"metrics": {
-			},
-			"network_only": True,
-			"show_on_homepage": False,
-		}
-		self.send_response(200)
-		self.send_header("Content-type", "application/json")
-		self.end_headers()
-		self.wfile.write(bytes(json.dumps(output, indent="\t")+"\n\n", "utf-8"))
-	def singleTrackController(self):
-		try:
-			event = json.loads(self.post_data)
-		except json.decoder.JSONDecodeError as json_err:
-			self.send_error(400, "Invalid json", str(json_err))
-			return
-		try:
-			response = updateWeighting(event["track"])
-			self.send_response(200, "OK")
-			self.send_header("Content-type", "text/plain")
-			self.end_headers()
-			self.wfile.write(bytes(response, "utf-8"))
-		except Exception as err:
-			traceback.print_exc()
-			error(f"Error updating weighting: {str(err)}")
-			self.send_error(500, "Error updating weighting", str(err))
+def app(environ, start_response):
+	method = environ["REQUEST_METHOD"]
+	path = environ["PATH_INFO"]
+	info(f"{method} {path}")
 
+	if method == "GET" and path == "/_info":
+		return info_controller(start_response)
+	elif method == "POST" and path == "/weight-track":
+		return weight_track_controller(environ, start_response)
+	else:
+		start_response("404 Not Found", [("Content-Type", "text/plain")])
+		return [b"Not Found"]
+
+def info_controller(start_response):
+	output = {
+		"system": "lucos_media_weightings",
+		"ci": {
+			"circle": "gh/lucas42/lucos_media_weightings",
+		},
+		"checks": {
+		},
+		"metrics": {
+		},
+		"network_only": True,
+		"show_on_homepage": False,
+	}
+	body = bytes(json.dumps(output, indent="\t") + "\n\n", "utf-8")
+	start_response("200 OK", [("Content-Type", "application/json")])
+	return [body]
+
+def weight_track_controller(environ, start_response):
+	try:
+		length = int(environ.get("CONTENT_LENGTH") or 0)
+		post_data = environ["wsgi.input"].read(length)
+		event = json.loads(post_data)
+	except (ValueError, json.decoder.JSONDecodeError) as err:
+		start_response("400 Bad Request", [("Content-Type", "text/plain")])
+		return [bytes(str(err), "utf-8")]
+	try:
+		response = updateWeighting(event["track"])
+		start_response("200 OK", [("Content-Type", "text/plain")])
+		return [bytes(response, "utf-8")]
+	except Exception as err:
+		traceback.print_exc()
+		error(f"Error updating weighting: {str(err)}")
+		start_response("500 Internal Server Error", [("Content-Type", "text/plain")])
+		return [bytes(str(err), "utf-8")]
 
 if __name__ == "__main__":
-	server = HTTPServer(('', port), WeightingHandler)
 	info("Server started on port %s" % (port))
-	server.serve_forever()
+	serve(app, host="0.0.0.0", port=port)
