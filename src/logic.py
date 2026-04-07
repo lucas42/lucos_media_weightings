@@ -5,33 +5,21 @@ def soft_cap(raw_multiplier, cap=100):
 	return cap * (1 - math.exp(-raw_multiplier / cap))
 
 def getTagValue(tags, key, default=None):
-	"""Get the value of a tag from a v3 array-of-objects format: [{name, uri}, ...].
-	Also accepts plain strings for backwards compatibility with v2 loganne webhook payloads
-	(lucos_media_metadata_api still sends v2 in webhooks; see lucos_media_metadata_api#85).
-	Remove the isinstance(str) branch once #85 is merged and deployed."""
+	"""Get the value of a tag from a v3 array-of-objects format: [{name, uri}, ...]."""
 	if key not in tags or not tags[key]:
 		return default
 	val = tags[key]
-	if isinstance(val, str):  # TODO: remove once lucos_media_metadata_api#85 lands
-		return val
 	return val[0].get('name', default)
 
 def getTrackId(track):
-	"""Get the track ID from a v3 track payload ('id' field).
-	Also accepts 'trackid' for backwards compatibility with v2 loganne webhook payloads
-	(lucos_media_metadata_api still sends v2 in webhooks; see lucos_media_metadata_api#85).
-	Remove the trackid fallback once #85 is merged and deployed."""
-	return track.get('id') or track.get('trackid')  # TODO: simplify to track['id'] once lucos_media_metadata_api#85 lands
+	"""Get the track ID from a v3 track payload ('id' field)."""
+	return track.get('id')
 
 def getTagUris(tags, key):
-	"""Get the set of URIs from a v3 tag array: [{name, uri}, ...].
-	Returns an empty set for v2 plain string values (backwards compat with loganne webhooks
-	until lucos_media_metadata_api#85; plain strings have no URI)."""
+	"""Get the set of URIs from a v3 tag array: [{name, uri}, ...]."""
 	if key not in tags:
 		return set()
 	val = tags[key]
-	if isinstance(val, str):  # TODO: remove once lucos_media_metadata_api#85 lands
-		return set()
 	return {v['uri'] for v in val if v.get('uri')}
 
 def getWeighting(track, currentDateTime, isEurovision = False, currentItems = None):
