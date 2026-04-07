@@ -40,7 +40,7 @@ class getAllTracks:
 
 		# If there's none left, fetch the next page
 		self.page += 1
-		self.tracks = requests.get(apiurl+"/v3/tracks?page="+str(self.page), headers={"Authorization":"Bearer "+apiKey}).json()['tracks']
+		self.tracks = requests.get(apiurl+"/v3/tracks?page="+str(self.page), headers={"Authorization":"Bearer "+apiKey}, timeout=30).json()['tracks']
 
 		if len(self.tracks) > 0:
 			return self.tracks.pop(0)
@@ -61,7 +61,7 @@ def updateWeighting(track, currentItems=None):
 	if (oldweighting != weighting):
 		if verbose:
 			print(json.dumps(track, indent=2))
-		result = requests.put(apiurl+"/v3/tracks/"+str(getTrackId(track))+"/weighting", data=str(weighting), allow_redirects=False, headers={"Authorization":"Bearer "+apiKey})
+		result = requests.put(apiurl+"/v3/tracks/"+str(getTrackId(track))+"/weighting", data=str(weighting), allow_redirects=False, headers={"Authorization":"Bearer "+apiKey}, timeout=30)
 		if result.is_redirect:
 			raise Exception("Redirect returned by server.  Make sure you're using the latest API URL.")
 		elif result.ok:
