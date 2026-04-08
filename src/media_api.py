@@ -40,7 +40,9 @@ class getAllTracks:
 
 		# If there's none left, fetch the next page
 		self.page += 1
-		self.tracks = requests.get(apiurl+"/v3/tracks?page="+str(self.page), headers={"Authorization":"Bearer "+apiKey}, timeout=30).json()['tracks']
+		response = requests.get(apiurl+"/v3/tracks?page="+str(self.page), headers={"Authorization":"Bearer "+apiKey}, timeout=30)
+		response.raise_for_status()
+		self.tracks = response.json()['tracks']
 
 		if len(self.tracks) > 0:
 			return self.tracks.pop(0)
