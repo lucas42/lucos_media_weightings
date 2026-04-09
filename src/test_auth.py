@@ -51,11 +51,11 @@ run_key_parse("_get_valid_keys returns empty set when CLIENT_KEYS not set", None
 run_key_parse("_get_valid_keys parses single pair", "svc=mytoken", {"mytoken"})
 run_key_parse("_get_valid_keys parses multiple pairs", "a=tokenA;b=tokenB", {"tokenA", "tokenB"})
 
-# is_authorised tests (Phase 1 behaviour)
+# is_authorised tests (Phase 3 behaviour)
 is_authorised_tests = [
 	("no CLIENT_KEYS → accept", {}, None, True),
 	("valid token → accept", {"HTTP_AUTHORIZATION": "Bearer mysecrettoken"}, "svc=mysecrettoken", True),
-	("missing header → accept during Phase 1 migration", {}, "svc=mysecrettoken", True),
+	("missing header → reject", {}, "svc=mysecrettoken", False),
 	("invalid token → reject", {"HTTP_AUTHORIZATION": "Bearer wrongtoken"}, "svc=mysecrettoken", False),
 	("no Bearer prefix → reject", {"HTTP_AUTHORIZATION": "mysecrettoken"}, "svc=mysecrettoken", False),
 	("multiple keys, first matches", {"HTTP_AUTHORIZATION": "Bearer tokenA"}, "a=tokenA;b=tokenB", True),
