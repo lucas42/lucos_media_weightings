@@ -22,17 +22,11 @@ def _get_valid_keys():
 	return {pair.split("=", 1)[1] for pair in client_keys_str.split(";") if "=" in pair}
 
 def is_authorised(environ):
-	"""Return True if the request has a valid Bearer token, or if CLIENT_KEYS is not configured.
-
-	During the migration phase (Phase 1), requests without an Authorization header are also
-	accepted to maintain backwards compatibility with Loganne before it starts sending tokens.
-	"""
+	"""Return True if the request has a valid Bearer token, or if CLIENT_KEYS is not configured."""
 	valid_keys = _get_valid_keys()
 	if not valid_keys:
 		return True
 	auth_header = environ.get("HTTP_AUTHORIZATION", "")
-	if not auth_header:
-		return True  # Accept unauthenticated during Phase 1 migration
 	if not auth_header.startswith("Bearer "):
 		return False
 	token = auth_header[len("Bearer "):]
