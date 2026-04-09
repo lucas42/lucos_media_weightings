@@ -14,9 +14,10 @@ os.environ.setdefault("TIME_API", "http://stub")
 import types
 
 # Stub out all non-stdlib modules server.py imports
-for mod_name in ("media_api", "schedule_tracker", "time_api", "loganne"):
+for mod_name in ("media_api", "schedule_tracker", "time_api", "loganne", "waitress"):
 	stub = types.ModuleType(mod_name)
 	stub.updateWeighting = None  # satisfy 'from media_api import updateWeighting'
+	stub.serve = lambda *a, **kw: None  # satisfy 'from waitress import serve'
 	sys.modules[mod_name] = stub
 
 from server import _get_valid_keys, is_authorised
