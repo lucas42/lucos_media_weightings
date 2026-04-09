@@ -14,6 +14,30 @@ except ValueError:
 	error("PORT isn't an integer")
 	sys.exit(1)
 
+def _get_valid_keys():
+	"""Parse CLIENT_KEYS env var (semicolon-separated name=value pairs) into a set of valid tokens."""
+	client_keys_str = os.environ.get("CLIENT_KEYS", "")
+	if not client_keys_str:
+		return set()
+	return {pair.split("=", 1)[1] for pair in client_keys_str.split(";") if "=" in pair}
+
+def is_authorised(environ):
+	"""Return True if the request has a valid Bearer token, or if CLIENT_KEYS is not configured.
+
+	During the migration phase (Phase 1), requests without an Authorization header are also
+	accepted to maintain backwards compatibility with Loganne before it starts sending tokens.
+	"""
+	valid_keys = _get_valid_keys()
+	if not valid_keys:
+		return True
+	auth_header = environ.get("HTTP_AUTHORIZATION", "")
+	if not auth_header:
+		return True  # Accept unauthenticated during Phase 1 migration
+	if not auth_header.startswith("Bearer "):
+		return False
+	token = auth_header[len("Bearer "):]
+	return token in valid_keys
+
 def app(environ, start_response):
 	method = environ["REQUEST_METHOD"]
 	path = environ["PATH_INFO"]
@@ -45,6 +69,9 @@ def info_controller(start_response):
 	return [body]
 
 def weight_track_controller(environ, start_response):
+	if not is_authorised(environ):
+		start_response("401 Unauthorized", [("Content-Type", "text/plain"), ("WWW-Authenticate", "Bearer")])
+		return [b"Invalid API Key"]
 	try:
 		length = int(environ.get("CONTENT_LENGTH") or 0)
 		post_data = environ["wsgi.input"].read(length)
