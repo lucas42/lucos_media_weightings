@@ -12,7 +12,7 @@ jobs:
           command: pipenv install
       - run:
           name: Run Tests
-          command: ./test.py
+          command: ./test.py && cd src && python3 test_auth.py
 workflows:
   version: 2
   build-deploy:
