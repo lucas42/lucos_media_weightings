@@ -12,6 +12,7 @@ services:
       - SCHEDULE_TRACKER_ENDPOINT
       - SYSTEM
       - LOGANNE_ENDPOINT
+      - CLIENT_KEYS
     image: lucas42/lucos_media_weightings
     restart: always
     healthcheck:
