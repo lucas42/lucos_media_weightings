@@ -1,4 +1,6 @@
 FROM lucas42/lucos_scheduled_scripts:2.0.2
+ARG VERSION
+ENV VERSION=$VERSION
 
 RUN pip install pipenv
 
