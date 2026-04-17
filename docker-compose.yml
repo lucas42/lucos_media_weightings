@@ -13,7 +13,7 @@ services:
       - SYSTEM
       - LOGANNE_ENDPOINT
       - CLIENT_KEYS
-    image: lucas42/lucos_media_weightings
+    image: lucas42/lucos_media_weightings:${VERSION:-latest}
     restart: always
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${PORT}/_info"]
