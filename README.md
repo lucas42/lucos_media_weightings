@@ -11,9 +11,20 @@ Updates the lucos media API with a weighting for each track to indicate how like
 
 ## Testing
 
-Doesn't use a proper testing framework.  However, run
-`./test.py`
-which will check various calls to the getWeighting() function
+Run the full test suite with:
+
+```
+./run_tests.sh
+```
+
+All test files live in `src/`:
+
+| File | What it tests |
+|---|---|
+| `test_logic.py` | Weighting calculations in `logic.py` |
+| `test_auth.py` | Authentication middleware in `server.py` |
+| `test_webhook.py` | Webhook handler in `server.py` |
+| `test_media_api.py` | SSRF guard and redirect handling in `media_api.py` |
 
 ## Dependencies
 
@@ -52,10 +63,12 @@ For local development, these should be stored in a .env file
 
 ## File structure
 
-* `Dockerfile`, `Pipfile`, `Pipfile.lock` and the `.cirleci` directory are used at build time
-* `src` directory holds the python source code
+* `Dockerfile`, `Pipfile`, `Pipfile.lock` and the `.circleci` directory are used at build time
+* `src` directory holds the python source code and tests
   - `logic.py` holds the logic for calculating the weighting of a given track.
   - `server.py` runs a HTTP server which updates the weighting of a given track via the metadata API.
-  - `all-tracks.py` is script which iterates through all the tracks and updates the weightings via the metadata API.
-* `test.py` does some simple checks on the logic in `src/logic.py`.
+  - `media_api.py` communicates with the media metadata API.
+  - `all-tracks.py` is a script which iterates through all the tracks and updates the weightings via the metadata API.
+  - `test_logic.py`, `test_auth.py`, `test_webhook.py`, `test_media_api.py` are the test files.
+* `run_tests.sh` runs the full test suite.
 * `startup.sh` ensures the cron daemon is running with the right environment set up and sharing its logs in a way that get surfaced to Docker
