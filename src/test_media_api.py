@@ -17,8 +17,17 @@ os.environ["KEY_LUCOS_MEDIA_METADATA_API"] = "test-api-key"
 os.environ["MEDIA_METADATA_MANAGER_ORIGIN"] = "http://media-manager.test"
 os.environ.setdefault("TIME_API", "http://stub")
 
-# Pop any stale cached version so we get the real module
+# Stub the `requests` module before any imports that need it.
+# media_api.py and time_api.py both do `import requests`, but `requests` is a
+# pipenv dependency not available to the system python3 used by CI.
+# The same approach is used by test_auth.py and test_webhook.py for their deps.
+import types
+_requests_stub = types.ModuleType("requests")
+sys.modules.setdefault("requests", _requests_stub)
+
+# Pop any stale cached versions so they re-import with our stub
 sys.modules.pop("media_api", None)
+sys.modules.pop("time_api", None)
 
 import media_api
 from media_api import fetchTrack
