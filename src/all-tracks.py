@@ -20,7 +20,7 @@ info(f"Fetched {len(currentItems)} current items from lucos_time")
 # Per-track errors are caught individually; a pagination-level failure (e.g. API
 # timeout mid-way through pages) is caught at the outer level and reported as
 # failure to the schedule tracker.
-pagination_error = False
+pagination_error = None
 try:
 	for track in getAllTracks():
 		try:
@@ -31,6 +31,9 @@ try:
 			error("** Error ** " + str(err))
 except Exception as err:
 	error(f"Pagination error: {str(err)}")
-	pagination_error = True
+	pagination_error = str(err)
 
-updateScheduleTracker(success=not pagination_error)
+if pagination_error is not None:
+	updateScheduleTracker(success=False, message=pagination_error)
+else:
+	updateScheduleTracker(success=True)
