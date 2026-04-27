@@ -1,6 +1,6 @@
 #! /usr/local/bin/python3
 import json, sys, os, traceback
-from media_api import updateWeighting
+from media_api import updateWeighting, fetchTrack
 from waitress import serve
 
 from log_util import info, error
@@ -73,10 +73,17 @@ def weight_track_controller(environ, start_response):
 	except (ValueError, json.decoder.JSONDecodeError) as err:
 		start_response("400 Bad Request", [("Content-Type", "text/plain")])
 		return [bytes(str(err), "utf-8")]
+	if "url" not in event:
+		start_response("400 Bad Request", [("Content-Type", "text/plain")])
+		return [b"Missing 'url' field in event"]
 	try:
-		response = updateWeighting(event["track"])
+		track = fetchTrack(event["url"])
+		response = updateWeighting(track)
 		start_response("200 OK", [("Content-Type", "text/plain")])
 		return [bytes(response, "utf-8")]
+	except ValueError as err:
+		start_response("400 Bad Request", [("Content-Type", "text/plain")])
+		return [bytes(str(err), "utf-8")]
 	except Exception as err:
 		traceback.print_exc()
 		error(f"Error updating weighting: {str(err)}")
