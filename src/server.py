@@ -1,9 +1,14 @@
 #! /usr/local/bin/python3
-import json, sys, os, traceback
+import json, sys, os, time, traceback
 from media_api import updateWeighting, fetchTrack
 from waitress import serve
 
+from health import probe_upstreams
 from log_util import info, error
+
+# Unix timestamp of the last successful weighting update via /weight-track.
+# 0 means no successful update has happened since the process started.
+_last_weighting_update = 0
 
 if not os.environ.get("PORT"):
 	error("PORT not set")
@@ -46,15 +51,19 @@ def app(environ, start_response):
 		return [b"Not Found"]
 
 def info_controller(start_response):
+	metrics = {
+		"last-weighting-update": {
+			"value": _last_weighting_update,
+			"techDetail": "Unix timestamp (seconds) of the most recent successful /weight-track call since this process started. 0 means none yet — fresh boots will read 0 until the first webhook fires.",
+		},
+	}
 	output = {
 		"system": "lucos_media_weightings",
 		"ci": {
 			"circle": "gh/lucas42/lucos_media_weightings",
 		},
-		"checks": {
-		},
-		"metrics": {
-		},
+		"checks": probe_upstreams(),
+		"metrics": metrics,
 		"network_only": True,
 		"show_on_homepage": False,
 	}
@@ -79,6 +88,8 @@ def weight_track_controller(environ, start_response):
 	try:
 		track = fetchTrack(event["url"])
 		response = updateWeighting(track)
+		global _last_weighting_update
+		_last_weighting_update = int(time.time())
 		start_response("200 OK", [("Content-Type", "text/plain")])
 		return [bytes(response, "utf-8")]
 	except ValueError as err:

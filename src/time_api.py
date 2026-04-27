@@ -9,13 +9,19 @@ if time_api_url.endswith("/"):
 	error("Don't include a trailing slash in the TIME_API url")
 	sys.exit(1)
 
-def getCurrentItems():
-	"""Fetch current temporal items from lucos_time."""
-	try:
-		response = requests.get(time_api_url + "/current-items", headers={'User-Agent': "lucos_media_weightings"})
-		response.raise_for_status()
-		data = response.json()
-		return data.get('items', [])
-	except Exception as err:
-		error(f"Failed to fetch current items from lucos_time: {err}")
-		return []
+def getCurrentItems(timeout=30):
+	"""Fetch current temporal items from lucos_time.
+
+	Raises on failure (network error, non-2xx, malformed JSON) — callers
+	should handle the exception. Previously this function swallowed errors
+	and returned [], which silently degraded weighting calculation during
+	time-API outages.
+	"""
+	response = requests.get(
+		time_api_url + "/current-items",
+		headers={'User-Agent': "lucos_media_weightings"},
+		timeout=timeout,
+	)
+	response.raise_for_status()
+	data = response.json()
+	return data.get('items', [])

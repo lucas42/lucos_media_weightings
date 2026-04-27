@@ -12,9 +12,18 @@ updateLoganne(
 )
 info("Checking media library for weightings which have changed...")
 
-# Fetch current temporal items once for the entire run
-currentItems = getCurrentItems()
-info(f"Fetched {len(currentItems)} current items from lucos_time")
+# Fetch current temporal items once for the entire run.
+# getCurrentItems can raise if the time API is unreachable. Don't fail
+# the whole run for that — degrade gracefully to an empty list (the
+# only consequence is that no current-event multipliers apply) and
+# carry on. The /_info time-api-reachable check is the right place to
+# surface a sustained outage.
+try:
+	currentItems = getCurrentItems()
+	info(f"Fetched {len(currentItems)} current items from lucos_time")
+except Exception as err:
+	error(f"Time API call failed; falling back to empty currentItems: {err}")
+	currentItems = []
 
 # Iterate through every track in the media API and try updating its weighting.
 # Per-track errors are caught individually; a pagination-level failure (e.g. API
