@@ -73,7 +73,16 @@ def updateWeighting(track, currentItems=None):
 	else:
 		oldweighting = "Not set"
 	if currentItems is None:
-		currentItems = getCurrentItems()
+		# getCurrentItems can raise if the time API is unreachable. We don't
+		# want a transient time-API blip to fail an entire webhook call —
+		# the only consequence of an empty currentItems is that the
+		# current-event multipliers won't apply for this track. Log a
+		# warning and continue.
+		try:
+			currentItems = getCurrentItems()
+		except Exception as err:
+			error(f"Time API call failed; falling back to empty currentItems: {err}")
+			currentItems = []
 	weighting = getWeighting(track, datetime.now(timezone.utc), currentItems=currentItems)
 	if (oldweighting != weighting):
 		debug(json.dumps(track, indent=2))
