@@ -138,10 +138,48 @@ with mock.patch.object(media_api, 'requests') as mock_requests:
 		raised = True
 	test("HTTP error from raise_for_status propagates", raised)
 
+# --- Test 8: MEDIA_MANAGER URL → 200 with JSON directly → returns JSON, no redirect ---
+# Documents the non-redirect manager path: if the manager ever supports JSON
+# content negotiation directly (it doesn't today, but a future rewrite might),
+# fetchTrack must handle it correctly without invoking the redirect block.
+media_api.managerurl = "http://media-manager.test"
+manager_direct_resp = make_response(json_data=mock_track, url="http://media-manager.test/tracks/42")
+with mock.patch.object(media_api, 'requests') as mock_requests:
+	mock_requests.get.return_value = manager_direct_resp
+	result = fetchTrack("http://media-manager.test/tracks/42")
+	call_headers = mock_requests.get.call_args[1]['headers']
+	test("MEDIA_MANAGER URL with direct 200 JSON response returns parsed JSON", result == mock_track)
+	test("only one HTTP request made when manager returns 200 directly", mock_requests.get.call_count == 1)
+	test("Authorization sent on direct manager request", call_headers['Authorization'] == 'Bearer test-api-key')
+
+# --- Test 9: Production failure mode — manager redirects to auth service (issue #195) ---
+# In production, https://media-metadata.l42.eu/tracks/N returns 302 to
+# https://auth.l42.eu/authenticate?redirect_uri=... because the manager UI
+# uses session-based auth via auth.l42.eu and does not honour Bearer tokens.
+# fetchTrack must reject this with ValueError so the webhook handler returns
+# 400 cleanly. This is the exact failure that broke webhooks for ~45 minutes
+# on 2026-04-27 between v1.0.28 and v1.0.30; the redirect-following fix in
+# PR #196 turned out not to work because the manager doesn't redirect to the
+# API at all — it redirects to a third-party auth service.
+media_api.managerurl = "http://media-manager.test"
+auth_redirect = make_response(
+	is_redirect=True,
+	location="http://auth.test/authenticate?redirect_uri=http%3A%2F%2Fmedia-manager.test%2Ftracks%2F42",
+	url="http://media-manager.test/tracks/42",
+)
+with mock.patch.object(media_api, 'requests') as mock_requests:
+	mock_requests.get.return_value = auth_redirect
+	raised = False
+	try:
+		fetchTrack("http://media-manager.test/tracks/42")
+	except ValueError:
+		raised = True
+	test("manager-redirect-to-auth-service raises ValueError (production failure mode #195)", raised)
+
 # Restore managerurl to the original imported value
 media_api.managerurl = "http://media-manager.test"
 
-total = 14  # individual assertions across 7 test blocks
+total = 18  # individual assertions across 9 test blocks
 if failures > 0:
 	print(f"\033[91m{failures} failures\033[0m in {total} assertions.")
 	sys.exit(1)
