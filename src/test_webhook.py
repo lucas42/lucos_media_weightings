@@ -116,9 +116,16 @@ with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
 	status, body = run_request(environ)
 	test("updateWeighting failure returns 500", status.startswith("500"))
 
-total = 8
+# Test 6: fetchTrack raising ValueError (e.g. untrusted URL) returns 400
+with mock.patch.object(server, "fetchTrack", side_effect=ValueError("URL must start with configured API")), \
+     mock.patch.object(server, "updateWeighting", return_value="ok"):
+	environ = make_environ({"type": "trackAdded", "url": "http://evil.example.com/tracks/42"})
+	status, body = run_request(environ)
+	test("disallowed URL (ValueError from fetchTrack) returns 400", status.startswith("400"))
+
+total = 9  # individual assertions across 6 test blocks
 if failures > 0:
-	print(f"\033[91m{failures} failures\033[0m in {total} tests.")
+	print(f"\033[91m{failures} failures\033[0m in {total} assertions.")
 	sys.exit(1)
 else:
-	print(f"All {total} webhook tests passed.")
+	print(f"All {total} assertions passed.")

@@ -81,6 +81,9 @@ def weight_track_controller(environ, start_response):
 		response = updateWeighting(track)
 		start_response("200 OK", [("Content-Type", "text/plain")])
 		return [bytes(response, "utf-8")]
+	except ValueError as err:
+		start_response("400 Bad Request", [("Content-Type", "text/plain")])
+		return [bytes(str(err), "utf-8")]
 	except Exception as err:
 		traceback.print_exc()
 		error(f"Error updating weighting: {str(err)}")

@@ -57,7 +57,12 @@ def fetchTrack(url):
 	Treats the webhook event URL as a notification — fetches the current
 	state from the source system rather than trusting the event payload.
 	This makes webhook retries safe from an ordering perspective.
+
+	Only fetches from the configured media API to prevent the API key from
+	being forwarded to an attacker-controlled server.
 	"""
+	if not url.startswith(apiurl + "/"):
+		raise ValueError(f"URL must start with the configured media API ({apiurl}/)")
 	response = requests.get(url, headers={"Authorization": "Bearer " + apiKey}, timeout=30)
 	response.raise_for_status()
 	return response.json()
