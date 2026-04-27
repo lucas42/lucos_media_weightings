@@ -17,6 +17,7 @@ import types
 for mod_name in ("media_api", "schedule_tracker", "time_api", "loganne", "waitress"):
 	stub = types.ModuleType(mod_name)
 	stub.updateWeighting = None  # satisfy 'from media_api import updateWeighting'
+	stub.fetchTrack = None  # satisfy 'from media_api import fetchTrack'
 	stub.serve = lambda *a, **kw: None  # satisfy 'from waitress import serve'
 	sys.modules[mod_name] = stub
 

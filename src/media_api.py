@@ -51,6 +51,17 @@ class getAllTracks:
 		else:
 			raise StopIteration
 
+def fetchTrack(url):
+	"""Fetch current track data from the given URL.
+
+	Treats the webhook event URL as a notification — fetches the current
+	state from the source system rather than trusting the event payload.
+	This makes webhook retries safe from an ordering perspective.
+	"""
+	response = requests.get(url, headers={"Authorization": "Bearer " + apiKey}, timeout=30)
+	response.raise_for_status()
+	return response.json()
+
 def updateWeighting(track, currentItems=None):
 	verbose = False
 	if ('weighting' in track):
