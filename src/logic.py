@@ -56,12 +56,14 @@ def getWeighting(track, currentDateTime, isEurovision = False, currentItems = No
 			addedTag = getTagValue(track['tags'], 'added')
 
 			# Normalise to UTC-aware datetime.
-			# Handle Z-suffix (Zulu/UTC) and naive timestamps (assumed UTC) consistently.
+			# Replace Z-suffix with explicit +00:00 (fromisoformat doesn't accept Z in Python < 3.11).
+			# If the result is still naive (no timezone), assume UTC.
+			# If an explicit offset is already present (e.g. +05:30), preserve it.
 			if addedTag.endswith("Z"):
 				addedTag = addedTag[:-1] + "+00:00"
-			else:
-				addedTag = addedTag + "+00:00"
 			dateTimeAdded = datetime.datetime.fromisoformat(addedTag)
+			if dateTimeAdded.tzinfo is None:
+				dateTimeAdded = dateTimeAdded.replace(tzinfo=datetime.timezone.utc)
 			delta = currentDateTime - dateTimeAdded
 			if delta.days < 1:
 				multiplier *= 100
