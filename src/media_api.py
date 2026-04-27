@@ -51,7 +51,7 @@ class getAllTracks:
 		else:
 			raise StopIteration
 
-def fetchTrack(url):
+def fetchTrack(url, timeout=30):
 	"""Fetch current track data from the given URL.
 
 	Treats the webhook event URL as a notification — fetches the current
@@ -63,7 +63,7 @@ def fetchTrack(url):
 	"""
 	if not url.startswith(apiurl + "/"):
 		raise ValueError(f"URL must start with the configured media API ({apiurl}/)")
-	response = requests.get(url, headers={"Authorization": "Bearer " + apiKey}, timeout=30)
+	response = requests.get(url, headers={"Authorization": "Bearer " + apiKey}, timeout=timeout)
 	response.raise_for_status()
 	return response.json()
 
