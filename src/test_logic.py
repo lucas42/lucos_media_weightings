@@ -2,7 +2,7 @@
 import datetime
 
 # Unit under test
-from src.logic import getWeighting, soft_cap, getTagValue, getTagUris, getTrackId
+from logic import getWeighting, soft_cap, getTagValue, getTagUris, getTrackId
 
 testcases = [
 	{
