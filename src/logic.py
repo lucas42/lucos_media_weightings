@@ -55,11 +55,15 @@ def getWeighting(track, currentDateTime, isEurovision = False, currentItems = No
 		try:
 			addedTag = getTagValue(track['tags'], 'added')
 
-			# RFC3339 and ISO 8601 are similar, but not exactly the same
-			# But if one ends in a Z (for Zulu-time), we can strip that off the end and treat it as if it's not there
-			if addedTag[-1] == "Z":
-				addedTag = addedTag[:-1]
+			# Normalise to UTC-aware datetime.
+			# Replace Z-suffix with explicit +00:00 (fromisoformat doesn't accept Z in Python < 3.11).
+			# If the result is still naive (no timezone), assume UTC.
+			# If an explicit offset is already present (e.g. +05:30), preserve it.
+			if addedTag.endswith("Z"):
+				addedTag = addedTag[:-1] + "+00:00"
 			dateTimeAdded = datetime.datetime.fromisoformat(addedTag)
+			if dateTimeAdded.tzinfo is None:
+				dateTimeAdded = dateTimeAdded.replace(tzinfo=datetime.timezone.utc)
 			delta = currentDateTime - dateTimeAdded
 			if delta.days < 1:
 				multiplier *= 100

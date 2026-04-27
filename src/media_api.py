@@ -1,5 +1,5 @@
 import json, sys, os, requests
-from datetime import datetime
+from datetime import datetime, timezone
 from logic import getWeighting, getTrackId
 from time_api import getCurrentItems
 from log_util import info, error, debug
@@ -74,7 +74,7 @@ def updateWeighting(track, currentItems=None):
 		oldweighting = "Not set"
 	if currentItems is None:
 		currentItems = getCurrentItems()
-	weighting = getWeighting(track, datetime.utcnow(), currentItems=currentItems)
+	weighting = getWeighting(track, datetime.now(timezone.utc), currentItems=currentItems)
 	if (oldweighting != weighting):
 		debug(json.dumps(track, indent=2))
 		result = requests.put(apiurl+"/v3/tracks/"+str(getTrackId(track))+"/weighting", data=str(weighting), allow_redirects=False, headers={"Authorization":"Bearer "+apiKey}, timeout=30)

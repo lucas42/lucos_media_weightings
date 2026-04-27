@@ -430,7 +430,7 @@ for case in testcases:
 
 	# Rating ratio preservation tests
 	if case.get('ratio_test'):
-		currentDateTime = datetime.datetime.fromisoformat(case['datetime'])
+		currentDateTime = datetime.datetime.fromisoformat(case['datetime']).replace(tzinfo=datetime.timezone.utc)
 		weight_a = getWeighting(case['payload_a'], currentDateTime)
 		weight_b = getWeighting(case['payload_b'], currentDateTime)
 		actual_ratio = weight_a / weight_b if weight_b != 0 else float('inf')
@@ -443,7 +443,7 @@ for case in testcases:
 		case["isEurovision"] = False
 	if "datetime" not in case:
 		case["datetime"] = "2000-01-01T17:00"
-	currentDateTime = datetime.datetime.fromisoformat(case['datetime'])
+	currentDateTime = datetime.datetime.fromisoformat(case['datetime']).replace(tzinfo=datetime.timezone.utc)
 
 	currentItems = case.get('currentItems', None)
 	actual = getWeighting(case['payload'], currentDateTime, isEurovision = case['isEurovision'], currentItems = currentItems)
