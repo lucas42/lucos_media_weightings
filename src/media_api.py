@@ -1,5 +1,6 @@
 import json, sys, os, requests
 from datetime import datetime, timezone
+from urllib.parse import urljoin
 from logic import getWeighting, getTrackId
 from time_api import getCurrentItems
 from log_util import info, error, debug
@@ -12,11 +13,14 @@ if (apiurl.endswith("/")):
 	error("Don't include a trailing slash in the API url")
 	sys.exit(1)
 
-
 if not os.environ.get("KEY_LUCOS_MEDIA_METADATA_API"):
 	error("KEY_LUCOS_MEDIA_METADATA_API not set")
 	sys.exit(1)
 apiKey = os.environ.get("KEY_LUCOS_MEDIA_METADATA_API")
+
+# Optional: the metadata manager's public base URL. When set, fetchTrack also
+# accepts URLs from this origin and follows redirects to the API.
+managerurl = os.environ.get("MEDIA_MANAGER", "").rstrip("/")
 
 class getAllTracks:
 	"""Returns an iterator covering all tracks in the media API
@@ -58,12 +62,37 @@ def fetchTrack(url, timeout=30):
 	state from the source system rather than trusting the event payload.
 	This makes webhook retries safe from an ordering perspective.
 
-	Only fetches from the configured media API to prevent the API key from
-	being forwarded to an attacker-controlled server.
+	Accepts URLs from the configured media API (MEDIA_API) and, optionally,
+	from the metadata manager (MEDIA_MANAGER). The manager redirects to the
+	API; the redirect is followed manually so the Authorization header is
+	re-sent on the cross-domain hop. An Accept: application/json header is
+	included so the manager's content-negotiation returns the JSON redirect.
+
+	Raises ValueError for URLs not matching a trusted origin.
 	"""
-	if not url.startswith(apiurl + "/"):
-		raise ValueError(f"URL must start with the configured media API ({apiurl}/)")
-	response = requests.get(url, headers={"Authorization": "Bearer " + apiKey}, timeout=timeout)
+	trusted_origins = [apiurl + "/"]
+	if managerurl:
+		trusted_origins.append(managerurl + "/")
+
+	if not any(url.startswith(origin) for origin in trusted_origins):
+		raise ValueError(f"URL must start with a trusted origin ({', '.join(trusted_origins)})")
+
+	headers = {
+		"Authorization": "Bearer " + apiKey,
+		"Accept": "application/json",
+	}
+
+	# Use allow_redirects=False so we can re-send the Authorization header
+	# after a cross-domain redirect (requests strips it by default).
+	response = requests.get(url, headers=headers, allow_redirects=False, timeout=timeout)
+
+	if response.is_redirect or response.is_permanent_redirect:
+		redirect_url = urljoin(response.url, response.headers["Location"])
+		# Validate the redirect destination is the trusted API
+		if not redirect_url.startswith(apiurl + "/"):
+			raise ValueError(f"Redirect target must be the configured media API ({apiurl}/)")
+		response = requests.get(redirect_url, headers=headers, allow_redirects=True, timeout=timeout)
+
 	response.raise_for_status()
 	return response.json()
 
