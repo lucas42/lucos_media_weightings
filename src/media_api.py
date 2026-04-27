@@ -87,11 +87,18 @@ def fetchTrack(url, timeout=30):
 	response = requests.get(url, headers=headers, allow_redirects=False, timeout=timeout)
 
 	if response.is_redirect or response.is_permanent_redirect:
-		redirect_url = urljoin(response.url, response.headers["Location"])
+		location = response.headers.get("Location")
+		if not location:
+			raise ValueError("Redirect response missing Location header")
+		redirect_url = urljoin(response.url, location)
 		# Validate the redirect destination is the trusted API
 		if not redirect_url.startswith(apiurl + "/"):
 			raise ValueError(f"Redirect target must be the configured media API ({apiurl}/)")
-		response = requests.get(redirect_url, headers=headers, allow_redirects=True, timeout=timeout)
+		# Use allow_redirects=False to cap at one hop — prevents a multi-hop chain
+		# from bypassing the SSRF guard (e.g. api/redirect-helper → evil.com).
+		response = requests.get(redirect_url, headers=headers, allow_redirects=False, timeout=timeout)
+		if response.is_redirect or response.is_permanent_redirect:
+			raise ValueError(f"Unexpected second redirect from {redirect_url}")
 
 	response.raise_for_status()
 	return response.json()
