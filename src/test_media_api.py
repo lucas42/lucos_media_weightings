@@ -176,10 +176,35 @@ with mock.patch.object(media_api, 'requests') as mock_requests:
 		raised = True
 	test("manager-redirect-to-auth-service raises ValueError (production failure mode #195)", raised)
 
+# --- Test 10: 302 with missing Location header → ValueError (not KeyError) ---
+media_api.managerurl = "http://media-manager.test"
+redirect_no_location = make_response(is_redirect=True, location=None, url="http://media-manager.test/tracks/42")
+with mock.patch.object(media_api, 'requests') as mock_requests:
+	mock_requests.get.return_value = redirect_no_location
+	raised = False
+	try:
+		fetchTrack("http://media-manager.test/tracks/42")
+	except ValueError:
+		raised = True
+	test("302 with missing Location header raises ValueError (not KeyError)", raised)
+
+# --- Test 11: second call returns 302 → ValueError (multi-hop bypass prevented) ---
+media_api.managerurl = ""
+first_redirect = make_response(is_redirect=True, location="http://media-api.test/v3/tracks/42", url="http://media-api.test/tracks/42")
+second_redirect = make_response(is_redirect=True, location="http://evil.example.com/data", url="http://media-api.test/v3/tracks/42")
+with mock.patch.object(media_api, 'requests') as mock_requests:
+	mock_requests.get.side_effect = [first_redirect, second_redirect]
+	raised = False
+	try:
+		fetchTrack("http://media-api.test/tracks/42")
+	except ValueError:
+		raised = True
+	test("second redirect from API raises ValueError (multi-hop bypass prevented)", raised)
+
 # Restore managerurl to the original imported value
 media_api.managerurl = "http://media-manager.test"
 
-total = 18  # individual assertions across 9 test blocks
+total = 20  # individual assertions across 11 test blocks
 if failures > 0:
 	print(f"\033[91m{failures} failures\033[0m in {total} assertions.")
 	sys.exit(1)
