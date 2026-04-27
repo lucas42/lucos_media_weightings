@@ -20,7 +20,7 @@ apiKey = os.environ.get("KEY_LUCOS_MEDIA_METADATA_API")
 
 # Optional: the metadata manager's public base URL. When set, fetchTrack also
 # accepts URLs from this origin and follows redirects to the API.
-managerurl = os.environ.get("MEDIA_MANAGER", "").rstrip("/")
+managerurl = os.environ.get("MEDIA_METADATA_MANAGER_ORIGIN", "").rstrip("/")
 
 class getAllTracks:
 	"""Returns an iterator covering all tracks in the media API
@@ -63,7 +63,7 @@ def fetchTrack(url, timeout=30):
 	This makes webhook retries safe from an ordering perspective.
 
 	Accepts URLs from the configured media API (MEDIA_API) and, optionally,
-	from the metadata manager (MEDIA_MANAGER). The manager redirects to the
+	from the metadata manager (MEDIA_METADATA_MANAGER_ORIGIN). The manager redirects to the
 	API; the redirect is followed manually so the Authorization header is
 	re-sent on the cross-domain hop. An Accept: application/json header is
 	included so the manager's content-negotiation returns the JSON redirect.
