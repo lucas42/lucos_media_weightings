@@ -72,11 +72,13 @@ def probe_upstreams():
 			"techDetail": f"Calls fetchTrack() against {_media_api_healthcheck_url()} with a {UPSTREAM_TIMEOUT_SECONDS}s timeout — exercises the same authenticated GET path as the webhook handler",
 			"ok": media_ok,
 			"failThreshold": FAIL_THRESHOLD,
+			"dependsOn": "lucos_media_metadata_api",
 		},
 		"time-api-reachable": {
 			"techDetail": f"Calls getCurrentItems() with a {UPSTREAM_TIMEOUT_SECONDS}s timeout — exercises the same /current-items call as updateWeighting",
 			"ok": time_ok,
 			"failThreshold": FAIL_THRESHOLD,
+			"dependsOn": "lucos_time",
 		},
 	}
 	if media_debug:
