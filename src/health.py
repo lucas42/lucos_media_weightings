@@ -10,8 +10,22 @@ data-access code paths used by the webhook handler. A passing health check
 therefore implies the actual workload would succeed too.
 
 The probe budget is tight: lucos_monitoring fetches /_info with a 1s hard
-timeout. Each probe runs with a 0.5s timeout and the two are run concurrently,
-so worst-case /_info latency is ~0.5s rather than ~1s.
+timeout. Each probe runs with a 1.0s timeout and the two are run concurrently,
+so worst-case /_info latency is ~1.0s — at the edge of monitoring's budget
+rather than under it. The earlier 0.5s timeout was found to false-positive on
+host-level CPU/IO contention during deploy windows for unrelated services on
+the same host (avalon): media-api would respond to /v3/tracks/1 in 500-900ms,
+fast enough for monitoring's 1s /_info probe to pass but too slow for our
+0.5s upstream probe — surfacing as 13 noisy alerts in 7 days vs 12 genuine
+media-api fetch-info alerts. See lucos_media_weightings#209.
+
+The trade-off: if BOTH upstreams are simultaneously slow (a rare combination,
+since media-api and time-api have independent failure modes), /_info latency
+can creep just over 1s and trip monitoring's own fetch-info check on
+weightings. That's the architecturally correct channel for "your /_info is
+slow" — better than this probe falsely claiming media-api is unreachable
+when it's actually responding in under a second. failThreshold: 2 on both
+checks ensures only sustained slowness (≥2 consecutive 60s polls) alerts.
 
 Imports of media_api and time_api are deferred to call-time so that test
 modules which stub those modules can import server.py (and transitively
@@ -19,7 +33,7 @@ health.py) without needing to add attributes to their stubs.
 """
 from concurrent.futures import ThreadPoolExecutor
 
-UPSTREAM_TIMEOUT_SECONDS = 0.5
+UPSTREAM_TIMEOUT_SECONDS = 1.0
 
 # Number of consecutive poll failures lucos_monitoring should tolerate before
 # alerting. Gives wiggle room for the occasional transient blip without
