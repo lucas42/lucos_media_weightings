@@ -416,6 +416,97 @@ testcases = [
 		],
 		'expected': 400,
 	},
+	{
+		'comment': "Track played within 24h has multiplier divided by 50",
+		'payload': {
+			'url': "http://example.com/recent.mp3",
+			'tags': {
+				'title': [{'name': 'Recent Track'}],
+				'rating': [{'name': '5'}],
+				'lastSuccessfulPlay': [{'name': '2030-06-01T12:00:00Z'}],
+			},
+			'collections': [],
+		},
+		'datetime': "2030-06-02T00:00:00",
+		'expected': 0.09999,
+	},
+	{
+		'comment': "Track played between 24h and 7d ago has multiplier divided by 10",
+		'payload': {
+			'url': "http://example.com/week-old.mp3",
+			'tags': {
+				'title': [{'name': 'Week-Old Track'}],
+				'rating': [{'name': '5'}],
+				'lastSuccessfulPlay': [{'name': '2030-06-01T12:00:00Z'}],
+			},
+			'collections': [],
+		},
+		'datetime': "2030-06-04T12:00:00",
+		'expected': 0.49975,
+	},
+	{
+		'comment': "Track played more than 7d ago has no recency penalty",
+		'payload': {
+			'url': "http://example.com/old.mp3",
+			'tags': {
+				'title': [{'name': 'Old Track'}],
+				'rating': [{'name': '5'}],
+				'lastSuccessfulPlay': [{'name': '2030-05-01T12:00:00Z'}],
+			},
+			'collections': [],
+		},
+		'datetime': "2030-06-01T12:00:00",
+		'expected': 4.97508,
+	},
+	{
+		'comment': "Invalid lastSuccessfulPlay tag is ignored",
+		'payload': {
+			'url': "http://example.com/bad-tag.mp3",
+			'tags': {
+				'title': [{'name': 'Track With Bad Tag'}],
+				'rating': [{'name': '5'}],
+				'lastSuccessfulPlay': [{'name': 'not-a-timestamp'}],
+			},
+			'collections': [],
+		},
+		'expected': 4.97508,
+	},
+	{
+		'comment': "Current item bypass: no recency penalty when track is about a current event (played within 24h)",
+		'payload': {
+			'url': "http://example.com/current-event.mp3",
+			'tags': {
+				'title': [{'name': 'Current Event Track'}],
+				'rating': [{'name': '5'}],
+				'lastSuccessfulPlay': [{'name': '2030-06-01T12:00:00Z'}],
+				'about': [{'name': 'June', 'uri': 'https://eolas.l42.eu/metadata/month/6/'}],
+			},
+			'collections': [],
+		},
+		'datetime': "2030-06-02T00:00:00",
+		'currentItems': [
+			{'uri': 'https://eolas.l42.eu/metadata/month/6/', 'name': 'June', 'type': 'Month'},
+		],
+		'expected': 316.06028,
+	},
+	{
+		'comment': "Current item bypass: no recency penalty when track mentions a current event (played within 24h)",
+		'payload': {
+			'url': "http://example.com/mentions-current.mp3",
+			'tags': {
+				'title': [{'name': 'Mentions Current Track'}],
+				'rating': [{'name': '5'}],
+				'lastSuccessfulPlay': [{'name': '2030-06-01T12:00:00Z'}],
+				'mentions': [{'name': 'June', 'uri': 'https://eolas.l42.eu/metadata/month/6/'}],
+			},
+			'collections': [],
+		},
+		'datetime': "2030-06-02T00:00:00",
+		'currentItems': [
+			{'uri': 'https://eolas.l42.eu/metadata/month/6/', 'name': 'June', 'type': 'Month'},
+		],
+		'expected': 90.63462,
+	},
 ]
 failures = 0
 for case in testcases:

@@ -74,6 +74,37 @@ def getWeighting(track, currentDateTime, isEurovision = False, currentItems = No
 		except Exception:
 			pass
 
+	# Recency penalty: reduce multiplier if track was recently played.
+	# Bypass if the track is about or mentions a current event (still relevant).
+	if 'lastSuccessfulPlay' in track['tags']:
+		try:
+			lastPlayedTag = getTagValue(track['tags'], 'lastSuccessfulPlay')
+			if lastPlayedTag.endswith("Z"):
+				lastPlayedTag = lastPlayedTag[:-1] + "+00:00"
+			lastPlayed = datetime.datetime.fromisoformat(lastPlayedTag)
+			if lastPlayed.tzinfo is None:
+				lastPlayed = lastPlayed.replace(tzinfo=datetime.timezone.utc)
+
+			# Check if track is about a current event — if so, skip the recency penalty
+			is_current_item = False
+			if currentItems:
+				about_uris = getTagUris(track['tags'], 'about')
+				mentions_uris = getTagUris(track['tags'], 'mentions')
+				current_uris = {item['uri'] for item in currentItems}
+				if about_uris & current_uris or mentions_uris & current_uris:
+					is_current_item = True
+
+			if not is_current_item:
+				delta = currentDateTime - lastPlayed
+				if delta.days < 1:
+					multiplier /= 50
+				elif delta.days < 7:
+					multiplier /= 10
+
+		# Ignore invalid timestamps in 'lastSuccessfulPlay' tag
+		except Exception:
+			pass
+
 	# Apply current event multipliers based on about/mentions tags
 	if currentItems:
 		about_uris = getTagUris(track['tags'], 'about')
