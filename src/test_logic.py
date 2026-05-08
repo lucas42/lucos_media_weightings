@@ -507,6 +507,24 @@ testcases = [
 		],
 		'expected': 90.63462,
 	},
+	{
+		'comment': "No recency bypass when about/mentions don't match current items",
+		'payload': {
+			'url': "http://example.com/no-bypass.mp3",
+			'tags': {
+				'title': [{'name': 'December Song'}],
+				'rating': [{'name': '5'}],
+				'lastSuccessfulPlay': [{'name': '2030-06-01T12:00:00Z'}],
+				'about': [{'name': 'December', 'uri': 'https://eolas.l42.eu/metadata/month/12/'}],
+			},
+			'collections': [],
+		},
+		'datetime': "2030-06-02T00:00:00",
+		'currentItems': [
+			{'uri': 'https://eolas.l42.eu/metadata/month/3/', 'name': 'March', 'type': 'Month'},
+		],
+		'expected': 0.09999,
+	},
 ]
 failures = 0
 for case in testcases:
