@@ -1,5 +1,6 @@
 import datetime
 import math
+from log_util import error
 
 def soft_cap(raw_multiplier, cap=100):
 	return cap * (1 - math.exp(-raw_multiplier / cap))
@@ -21,6 +22,17 @@ def getTagUris(tags, key):
 		return set()
 	val = tags[key]
 	return {v['uri'] for v in val if v.get('uri')}
+
+def _parse_rfc3339(value):
+	"""Parse an RFC 3339/ISO 8601 timestamp string into a timezone-aware datetime.
+	Normalises Z-suffix to +00:00 (fromisoformat doesn't accept Z in Python < 3.11).
+	If no timezone info is present, assumes UTC."""
+	if value.endswith("Z"):
+		value = value[:-1] + "+00:00"
+	dt = datetime.datetime.fromisoformat(value)
+	if dt.tzinfo is None:
+		dt = dt.replace(tzinfo=datetime.timezone.utc)
+	return dt
 
 def getWeighting(track, currentDateTime, isEurovision = False, currentItems = None):
 	collection_slugs = list(map(lambda collection: collection['slug'], track['collections']))
@@ -52,39 +64,46 @@ def getWeighting(track, currentDateTime, isEurovision = False, currentItems = No
 			multiplier *= 100
 
 	if 'added' in track['tags']:
+		raw_tag = getTagValue(track['tags'], 'added')
 		try:
-			addedTag = getTagValue(track['tags'], 'added')
-
-			# Normalise to UTC-aware datetime.
-			# Replace Z-suffix with explicit +00:00 (fromisoformat doesn't accept Z in Python < 3.11).
-			# If the result is still naive (no timezone), assume UTC.
-			# If an explicit offset is already present (e.g. +05:30), preserve it.
-			if addedTag.endswith("Z"):
-				addedTag = addedTag[:-1] + "+00:00"
-			dateTimeAdded = datetime.datetime.fromisoformat(addedTag)
-			if dateTimeAdded.tzinfo is None:
-				dateTimeAdded = dateTimeAdded.replace(tzinfo=datetime.timezone.utc)
+			dateTimeAdded = _parse_rfc3339(raw_tag)
 			delta = currentDateTime - dateTimeAdded
 			if delta.days < 1:
 				multiplier *= 100
 			elif delta.days < 14:
 				multiplier *= 10
+		except Exception as e:
+			error(f"Invalid added tag for track {getTrackId(track)}: {raw_tag!r} ({e})")
 
-		# Ignore invalid dates in 'added' tag
-		except Exception:
-			pass
-
-	# Apply current event multipliers based on about/mentions tags
+	# Apply current event multipliers based on about/mentions tags.
+	# Also compute is_current_item for use in the recency penalty block below.
+	is_current_item = False
 	if currentItems:
 		about_uris = getTagUris(track['tags'], 'about')
 		mentions_uris = getTagUris(track['tags'], 'mentions')
 		current_uris = {item['uri'] for item in currentItems}
-
+		if about_uris & current_uris or mentions_uris & current_uris:
+			is_current_item = True
 		for uri in current_uris:
 			if uri in about_uris:
 				multiplier *= 100
 			elif uri in mentions_uris:
 				multiplier *= 20
+
+	# Recency penalty: reduce multiplier if track was recently played.
+	# Bypass if the track is about or mentions a current event (still relevant).
+	if 'lastSuccessfulPlay' in track['tags']:
+		raw_tag = getTagValue(track['tags'], 'lastSuccessfulPlay')
+		try:
+			lastPlayed = _parse_rfc3339(raw_tag)
+			if not is_current_item:
+				delta = currentDateTime - lastPlayed
+				if delta.days < 1:
+					multiplier /= 50
+				elif delta.days < 7:
+					multiplier /= 10
+		except Exception as e:
+			error(f"Invalid lastSuccessfulPlay tag for track {getTrackId(track)}: {raw_tag!r} ({e})")
 
 	weighting *= soft_cap(multiplier, cap=100)
 
