@@ -63,6 +63,7 @@ def getWeighting(track, currentDateTime, isEurovision = False, currentItems = No
 		if isEurovision:
 			multiplier *= 100
 
+	is_new_track = False
 	if 'added' in track['tags']:
 		raw_tag = getTagValue(track['tags'], 'added')
 		try:
@@ -70,8 +71,10 @@ def getWeighting(track, currentDateTime, isEurovision = False, currentItems = No
 			delta = currentDateTime - dateTimeAdded
 			if delta.days < 1:
 				multiplier *= 100
+				is_new_track = True
 			elif delta.days < 14:
 				multiplier *= 10
+				is_new_track = True
 		except Exception as e:
 			error(f"Invalid added tag for track {getTrackId(track)}: {raw_tag!r} ({e})")
 
@@ -91,12 +94,13 @@ def getWeighting(track, currentDateTime, isEurovision = False, currentItems = No
 				multiplier *= 20
 
 	# Recency penalty: reduce multiplier if track was recently played.
-	# Bypass if the track is about or mentions a current event (still relevant).
+	# Bypass if the track is about or mentions a current event (still relevant),
+	# or if the track itself is new (added within the last 14 days).
 	if 'lastSuccessfulPlay' in track['tags']:
 		raw_tag = getTagValue(track['tags'], 'lastSuccessfulPlay')
 		try:
 			lastPlayed = _parse_rfc3339(raw_tag)
-			if not is_current_item:
+			if not is_current_item and not is_new_track:
 				delta = currentDateTime - lastPlayed
 				if delta.days < 1:
 					multiplier /= 50

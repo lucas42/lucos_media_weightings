@@ -525,6 +525,66 @@ testcases = [
 		],
 		'expected': 0.09999,
 	},
+	{
+		'comment': "New track bypass: no recency penalty when track was added < 14 days ago (played within 24h)",
+		'payload': {
+			'url': "http://example.com/new-but-played.mp3",
+			'tags': {
+				'title': [{'name': 'New Track'}],
+				'rating': [{'name': '5'}],
+				'added': [{'name': '2030-06-01T12:00:00Z'}],
+				'lastSuccessfulPlay': [{'name': '2030-06-08T00:00:00Z'}],
+			},
+			'collections': [],
+		},
+		'datetime': "2030-06-09T12:00:00",
+		'expected': 47.58129,
+	},
+	{
+		'comment': "New track bypass: no recency penalty when track was added < 14 days ago (played 1-7 days ago)",
+		'payload': {
+			'url': "http://example.com/new-played-3d-ago.mp3",
+			'tags': {
+				'title': [{'name': 'New Track Played 3 Days Ago'}],
+				'rating': [{'name': '5'}],
+				'added': [{'name': '2030-06-01T12:00:00Z'}],
+				'lastSuccessfulPlay': [{'name': '2030-06-06T12:00:00Z'}],
+			},
+			'collections': [],
+		},
+		'datetime': "2030-06-09T12:00:00",
+		'expected': 47.58129,
+	},
+	{
+		'comment': "New track bypass: no recency penalty for brand new track (added < 24h) played recently",
+		'payload': {
+			'url': "http://example.com/brand-new-played.mp3",
+			'tags': {
+				'title': [{'name': 'Brand New Track'}],
+				'rating': [{'name': '5'}],
+				'added': [{'name': '2030-06-09T00:00:00Z'}],
+				'lastSuccessfulPlay': [{'name': '2030-06-09T06:00:00Z'}],
+			},
+			'collections': [],
+		},
+		'datetime': "2030-06-09T12:00:00",
+		'expected': 316.06028,
+	},
+	{
+		'comment': "Old track (added > 14 days ago) still gets recency penalty when played within 24h",
+		'payload': {
+			'url': "http://example.com/old-played-recently.mp3",
+			'tags': {
+				'title': [{'name': 'Old Track Played Recently'}],
+				'rating': [{'name': '5'}],
+				'added': [{'name': '2030-05-01T12:00:00Z'}],
+				'lastSuccessfulPlay': [{'name': '2030-06-08T12:00:00Z'}],
+			},
+			'collections': [],
+		},
+		'datetime': "2030-06-09T00:00:00",
+		'expected': 0.09999,
+	},
 ]
 failures = 0
 for case in testcases:
