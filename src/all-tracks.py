@@ -8,7 +8,7 @@ from log_util import info, error
 # Record in loganne that the script has started
 updateLoganne(
 	type="weightings",
-	humanReadable="Calculate weightings for all media tracks"
+	humanReadable="Calculating weightings for all media tracks"
 )
 info("Checking media library for weightings which have changed...")
 
