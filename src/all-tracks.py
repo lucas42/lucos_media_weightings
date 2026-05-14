@@ -43,6 +43,6 @@ except Exception as err:
 	pagination_error = str(err)
 
 if pagination_error is not None:
-	updateScheduleTracker(success=False, message=pagination_error)
+	updateScheduleTracker(success=False, message=pagination_error, job_name="all-tracks")
 else:
-	updateScheduleTracker(success=True)
+	updateScheduleTracker(success=True, job_name="all-tracks")
