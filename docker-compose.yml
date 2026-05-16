@@ -14,6 +14,7 @@ services:
       - SYSTEM
       - LOGANNE_ENDPOINT
       - CLIENT_KEYS
+      - LOG_LEVEL
     image: lucas42/lucos_media_weightings:${VERSION:-latest}
     restart: always
     healthcheck:
