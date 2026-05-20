@@ -14,20 +14,20 @@ Updates the lucos media API with a weighting for each track to indicate how like
 Every request produces a single log line:
 
 ```
-[YYYY-MM-DD HH:MM:SS] METHOD /path STATUS_CODE Xms
+[YYYY-MM-DD HH:MM:SS] LEVEL METHOD /path STATUS_CODE Xms
 ```
 
 For example:
 
 ```
-[2026-05-19 17:18:00] POST /weight-track 200 42ms
-[2026-05-19 17:18:01] GET /_info 200 1ms
+[2026-05-19 17:18:00] INFO POST /weight-track 200 42ms
+[2026-05-19 17:18:01] INFO GET /_info 200 1ms
 ```
 
 Responses that take `≥ 1000ms` are prefixed `SLOW:` and logged at WARN level (yellow), making them easy to grep:
 
 ```
-[2026-05-19 17:18:02] SLOW: POST /weight-track 200 1234ms
+[2026-05-19 17:18:02] WARN SLOW: POST /weight-track 200 1234ms
 ```
 
 Grep targets: `SLOW:` for slow responses; the status code (e.g. `500`) for errors.
