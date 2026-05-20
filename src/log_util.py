@@ -1,21 +1,27 @@
 from datetime import datetime
 import os, sys
 
-def log(message, is_error=False):
-	timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-	color_code = "\033[91m" if is_error else "\033[92m"
-	reset_code = "\033[0m"
+# ANSI colour codes used in log output
+_COLOR_INFO  = "\033[92m"  # green
+_COLOR_WARN  = "\033[93m"  # yellow
+_COLOR_ERROR = "\033[91m"  # red
+_COLOR_RESET = "\033[0m"
 
-	formatted_message = f"[{timestamp}] {color_code}{message}{reset_code}"
+def _log(message, color):
+	timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+	formatted_message = f"[{timestamp}] {color}{message}{_COLOR_RESET}"
 	print(formatted_message, flush=True)
 
 def info(message):
-	log(message, is_error=False)
+	_log(message, _COLOR_INFO)
+
+def warn(message):
+	_log(message, _COLOR_WARN)
 
 def error(message):
-	log(message, is_error=True)
+	_log(message, _COLOR_ERROR)
 
 def debug(message):
 	"""Log a debug message. Only output if LOG_LEVEL=debug is set in the environment."""
 	if os.environ.get("LOG_LEVEL", "").lower() == "debug":
-		log(message, is_error=False)
+		_log(message, _COLOR_INFO)

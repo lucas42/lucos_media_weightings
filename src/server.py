@@ -4,7 +4,11 @@ from media_api import updateWeighting, fetchTrack
 from waitress import serve
 
 from health import probe_upstreams
-from log_util import info, error
+from log_util import info, warn, error
+
+# Responses slower than this threshold are logged at WARN level so they can be
+# grepped without trawling the full access log.  Format: "SLOW: POST /weight-track 200 1234ms"
+SLOW_RESPONSE_THRESHOLD_MS = 1000
 
 # Unix timestamp of the last successful weighting update via /weight-track.
 # 0 means no successful update has happened since the process started.
@@ -38,17 +42,40 @@ def is_authorised(environ):
 	return token in valid_keys
 
 def app(environ, start_response):
+	"""WSGI entry point.
+
+	Access log format: METHOD /path STATUS_CODE Xms
+	  e.g.  POST /weight-track 200 42ms
+
+	Lines at or above SLOW_RESPONSE_THRESHOLD_MS are prefixed "SLOW: " and
+	emitted at WARN level so they can be grepped without scanning the full log.
+	"""
 	method = environ["REQUEST_METHOD"]
 	path = environ["PATH_INFO"]
-	info(f"{method} {path}")
+	start_time = time.time()
+
+	# Wrap start_response so we can capture the status code for the access log.
+	status_holder = [None]
+	def logging_start_response(status, headers):
+		status_holder[0] = status
+		return start_response(status, headers)
 
 	if method == "GET" and path == "/_info":
-		return info_controller(start_response)
+		result = info_controller(logging_start_response)
 	elif method == "POST" and path == "/weight-track":
-		return weight_track_controller(environ, start_response)
+		result = weight_track_controller(environ, logging_start_response)
 	else:
-		start_response("404 Not Found", [("Content-Type", "text/plain")])
-		return [b"Not Found"]
+		logging_start_response("404 Not Found", [("Content-Type", "text/plain")])
+		result = [b"Not Found"]
+
+	elapsed_ms = int((time.time() - start_time) * 1000)
+	status_code = status_holder[0].split(" ", 1)[0] if status_holder[0] else "???"
+	log_line = f"{method} {path} {status_code} {elapsed_ms}ms"
+	if elapsed_ms >= SLOW_RESPONSE_THRESHOLD_MS:
+		warn(f"SLOW: {log_line}")
+	else:
+		info(log_line)
+	return result
 
 def info_controller(start_response):
 	metrics = {
