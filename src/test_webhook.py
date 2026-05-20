@@ -123,7 +123,19 @@ with mock.patch.object(server, "fetchTrack", side_effect=ValueError("URL must st
 	status, body = run_request(environ)
 	test("disallowed URL (ValueError from fetchTrack) returns 400", status.startswith("400"))
 
-total = 9  # individual assertions across 6 test blocks
+# Test 7: access log includes status code and response time on a successful POST
+with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
+     mock.patch.object(server, "updateWeighting", return_value="ok"), \
+     mock.patch.object(server, "info") as mock_info:
+	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
+	run_request(environ)
+	# The access log call is the one that includes the path
+	log_lines = [call[0][0] for call in mock_info.call_args_list]
+	access_log = next((l for l in log_lines if "/weight-track" in l), "")
+	test("access log includes status code", "200" in access_log)
+	test("access log includes response time in ms", "ms" in access_log)
+
+total = 11  # individual assertions across 7 test blocks
 if failures > 0:
 	print(f"\033[91m{failures} failures\033[0m in {total} assertions.")
 	sys.exit(1)
