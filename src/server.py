@@ -4,7 +4,7 @@ from media_api import updateWeighting, fetchTrack
 from waitress import serve
 
 from health import probe_upstreams
-from log_util import info, warn, error
+from log_util import info, warn, error, debug
 
 # Responses slower than this threshold are logged at WARN level so they can be
 # grepped without trawling the full access log.  Format: "SLOW: POST /weight-track 200 1234ms"
@@ -73,6 +73,8 @@ def app(environ, start_response):
 	log_line = f"{method} {path} {status_code} {elapsed_ms}ms"
 	if elapsed_ms >= SLOW_RESPONSE_THRESHOLD_MS:
 		warn(f"SLOW: {log_line}")
+	elif path == "/_info":
+		debug(log_line)
 	else:
 		info(log_line)
 	return result

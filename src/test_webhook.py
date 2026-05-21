@@ -135,7 +135,25 @@ with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
 	test("access log includes status code", "200" in access_log)
 	test("access log includes response time in ms", "ms" in access_log)
 
-total = 11  # individual assertions across 7 test blocks
+# Test 8: /_info access log uses debug level, not info level
+with mock.patch.object(server, "debug") as mock_debug, \
+     mock.patch.object(server, "info") as mock_info, \
+     mock.patch.object(server, "probe_upstreams", return_value={}):
+	info_environ = {
+		"REQUEST_METHOD": "GET",
+		"PATH_INFO": "/_info",
+		"CONTENT_LENGTH": "0",
+		"wsgi.input": io.BytesIO(b""),
+	}
+	run_request(info_environ)
+	debug_lines = [call[0][0] for call in mock_debug.call_args_list]
+	info_lines = [call[0][0] for call in mock_info.call_args_list]
+	access_debug = next((l for l in debug_lines if "/_info" in l), "")
+	access_info = next((l for l in info_lines if "/_info" in l), "")
+	test("/_info access log uses debug level", "/_info" in access_debug)
+	test("/_info access log does not use info level", access_info == "")
+
+total = 13  # individual assertions across 8 test blocks
 if failures > 0:
 	print(f"\033[91m{failures} failures\033[0m in {total} assertions.")
 	sys.exit(1)
