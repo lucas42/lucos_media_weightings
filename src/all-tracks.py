@@ -5,10 +5,13 @@ from loganne import updateLoganne
 from schedule_tracker import updateScheduleTracker
 from log_util import info, error
 
-# Record in loganne that the script has started
+# Record in loganne that the script has started.
+# level="detail" keeps this mechanical churn out of the default loganne feed
+# (per loganne ADR-0001) — visible at ?level=detail but not ?level=routine.
 updateLoganne(
 	type="weightings",
-	humanReadable="Calculating weightings for all media tracks"
+	humanReadable="Calculating weightings for all media tracks",
+	level="detail"
 )
 info("Checking media library for weightings which have changed...")
 
