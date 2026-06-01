@@ -6,3 +6,4 @@ python3 test_logic.py
 python3 test_auth.py
 python3 test_webhook.py
 python3 test_media_api.py
+python3 test_all_tracks.py
