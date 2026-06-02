@@ -10,24 +10,35 @@ from log_util import info, warn, error, debug
 # grepped without trawling the full access log.  Format: "SLOW: POST /weight-track 200 1234ms"
 SLOW_RESPONSE_THRESHOLD_MS = 1000
 
+# How long (seconds) the queue can have depth > 0 without a successful event
+# being processed before the drain-liveness check trips.  Must exceed the
+# worst-case single-event processing time (one 30s-timeout-capped media-api
+# call); 120s is comfortably above normal drain cadence (~3s/event) and still
+# alerts within two monitor poll intervals.
+DRAIN_LIVENESS_THRESHOLD_SECONDS = 120
+
 # Unix timestamp of the last successful weighting update via the background worker.
 # 0 means no successful update has happened since the process started.
 _last_weighting_update = 0
 
 # Total number of events that failed processing in the background worker since
-# process start.  Non-zero means at least one accepted event was not processed.
+# process start.  Kept as a metric and logged per-event for dashboard and log
+# correlation; not used as a check determinant (see drain-liveness check).
 _processing_failures = 0
-
-# Unix timestamp of the most recent processing failure.  0 means no failure has
-# occurred since the process started.  Used by the event-queue check to recover
-# automatically once processing resumes successfully after a failure — compare
-# against _last_weighting_update (see info_controller).
-_last_processing_failure_at = 0
 
 # Bounded in-memory queue for async event processing.  A maxsize of 500 gives
 # ~25 minutes of backlog capacity at the observed ~3s/event drain rate, which
 # is comfortably above the largest burst we've seen (177 events, 2026-05-22).
 _event_queue = queue.Queue(maxsize=500)
+
+# Recorded at process start for the drain-liveness check: staleness is
+# measured from max(last_weighting_update, process_start) so a fresh boot
+# does not trip the check before the first event is processed.
+_process_start_time = time.time()
+
+# Module-level reference to the background worker thread.  Set in the
+# __main__ block; remains None in test environments (worker never starts).
+_worker_thread = None
 
 if not os.environ.get("PORT"):
 	error("PORT not set")
@@ -95,37 +106,59 @@ def app(environ, start_response):
 	return result
 
 def info_controller(start_response):
+	queue_depth = _event_queue.qsize()
+	now = time.time()
+
+	# Worker-alive: instant dead-thread detection.  A dead worker with an empty
+	# queue is invisible to the drain-liveness check until the next event lands;
+	# is_alive() catches it immediately.
+	worker_alive_ok = _worker_thread is not None and _worker_thread.is_alive()
+
+	# Drain-liveness: queue is non-empty AND no successful event has been
+	# processed for DRAIN_LIVENESS_THRESHOLD_SECONDS.  Staleness is measured
+	# from max(last_weighting_update, process_start) so a fresh boot does not
+	# false-positive before the first event is processed.
+	# - Covers a wedged/dead worker (depth climbs, success clock frozen) AND a
+	#   hard-down downstream dependency.
+	# - Self-heals the moment the queue drains or the success clock advances.
+	# - Ignores single transient errors: one bad event doesn't create a sustained
+	#   backlog with a frozen clock; the worker dequeues fast and moves on.
+	reference_time = max(_last_weighting_update or 0, _process_start_time)
+	staleness_seconds = now - reference_time
+	drain_liveness_ok = not (queue_depth > 0 and staleness_seconds > DRAIN_LIVENESS_THRESHOLD_SECONDS)
+
 	checks = probe_upstreams()
-	# ok=True when no failure has ever occurred, OR when the most recent
-	# successful event was processed after the most recent failure — i.e. the
-	# queue is currently draining successfully.  Recovers automatically once
-	# processing resumes; does not require a process restart to clear.
-	queue_ok = (
-		_last_processing_failure_at == 0
-		or _last_weighting_update > _last_processing_failure_at
-	)
-	checks["event-queue"] = {
+	checks["worker-alive"] = {
 		"techDetail": (
-			"Background worker queue for async webhook processing. "
-			"ok=True when no processing failures have occurred since process start, "
-			"or when the most recently completed event succeeded after the most recent failure. "
-			"Recovers automatically once processing resumes — no restart required. "
-			"See 'processing-failures' metric for the running count."
+			"Background worker thread is alive and able to process queued events. "
+			"ok=False means no events can be processed — the queue will fill and "
+			"/weight-track will return 503 Service Unavailable."
 		),
-		"ok": queue_ok,
+		"ok": worker_alive_ok,
 	}
+	checks["drain-liveness"] = {
+		"techDetail": (
+			f"Queue is draining: ok=False when queue depth is non-zero and no successful event "
+			f"has been processed for {DRAIN_LIVENESS_THRESHOLD_SECONDS}s "
+			f"(staleness measured from max(last_weighting_update, process_start) to avoid fresh-boot false-positives). "
+			f"Covers both a wedged worker and a hard-down downstream dependency. "
+			f"Self-heals when the queue drains or a successful event advances the clock."
+		),
+		"ok": drain_liveness_ok,
+	}
+
 	metrics = {
 		"last-weighting-update": {
 			"value": _last_weighting_update,
 			"techDetail": "Unix timestamp (seconds) of the most recent successful weighting update by the background worker since this process started. 0 means none yet — fresh boots will read 0 until the first webhook fires.",
 		},
 		"queue-depth": {
-			"value": _event_queue.qsize(),
-			"techDetail": "Current number of events waiting in the internal queue for background processing. Non-zero during normal drain; sustained growth indicates the worker is falling behind.",
+			"value": queue_depth,
+			"techDetail": "Current number of events waiting in the internal queue for background processing. Non-zero during normal drain; sustained growth with a frozen last-weighting-update indicates a stall.",
 		},
 		"processing-failures": {
 			"value": _processing_failures,
-			"techDetail": "Total number of events that the background worker failed to process (fetchTrack or updateWeighting raised an exception) since process start. Non-zero means at least one accepted event was not successfully processed.",
+			"techDetail": "Total number of events the background worker failed to process since process start. Useful for dashboard trend and log correlation; each failure also emits an ERROR log line with the event URL.",
 		},
 	}
 	output = {
@@ -178,11 +211,10 @@ def _process_event(event):
 	"""Process a single queued event: fetch the current track state then update its weighting.
 
 	Called by the background worker thread.  Updates _last_weighting_update on
-	success; increments _processing_failures and records _last_processing_failure_at
-	on any exception, so the event-queue check in /_info can self-heal once
-	processing resumes successfully.
+	success; increments _processing_failures on any exception (and logs an error
+	line with the event URL for log correlation).
 	"""
-	global _last_weighting_update, _processing_failures, _last_processing_failure_at
+	global _last_weighting_update, _processing_failures
 	try:
 		track = fetchTrack(event["url"])
 		response = updateWeighting(track)
@@ -192,7 +224,6 @@ def _process_event(event):
 		traceback.print_exc()
 		error(f"Error processing event for {event.get('url', '?')}: {str(err)}")
 		_processing_failures += 1
-		_last_processing_failure_at = int(time.time())
 
 def _worker():
 	"""Background daemon thread that drains _event_queue one event at a time."""
@@ -202,7 +233,7 @@ def _worker():
 		_event_queue.task_done()
 
 if __name__ == "__main__":
-	t = threading.Thread(target=_worker, daemon=True, name="event-queue-worker")
-	t.start()
+	_worker_thread = threading.Thread(target=_worker, daemon=True, name="event-queue-worker")
+	_worker_thread.start()
 	info("Server started on port %s" % (port))
 	serve(app, host="0.0.0.0", port=port)
