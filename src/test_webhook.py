@@ -1,14 +1,17 @@
 #! /usr/bin/env python3
-"""Unit tests for weight_track_controller in server.py.
+"""Unit tests for weight_track_controller and _process_event in server.py.
 
-Tests that the handler re-fetches track data from the event URL rather
-than reading it directly from the event payload.
+The webhook handler now follows the accept-202-enqueue pattern (ADR-0006):
+- HTTP path: validate auth + parse JSON, enqueue event, return 202 immediately.
+- Background worker: calls _process_event per event, which does fetchTrack +
+  updateWeighting.
 
 Run from src/ directory: python3 test_webhook.py
 """
 import io
 import json
 import os
+import queue
 import sys
 import types
 import unittest.mock as mock
@@ -70,72 +73,96 @@ mock_track = {
 	"collections": [],
 }
 
-# Test 1: handler fetches track from event["url"] and passes it to updateWeighting
-with mock.patch.object(server, "fetchTrack", return_value=mock_track) as mock_fetch, \
-     mock.patch.object(server, "updateWeighting", return_value="Weighting changed to 3.5") as mock_update:
+# --- HTTP-layer tests: enqueue and return 202 ---
+
+# Test 1: valid event returns 202 and event is enqueued
+with mock.patch.object(server._event_queue, "put_nowait") as mock_put:
 	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
 	status, body = run_request(environ)
-	test("returns 200 on success", status.startswith("200"))
-	test("fetchTrack called with event url",
-	     mock_fetch.call_args == mock.call("http://media.l42.eu/tracks/42"))
-	test("updateWeighting called with fetched track",
-	     mock_update.call_args == mock.call(mock_track))
-	test("response body contains update message", "Weighting changed to 3.5" in body)
+	test("returns 202 Accepted on valid event", status.startswith("202"))
+	test("event enqueued with correct url",
+	     mock_put.call_args == mock.call({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"}))
 
-# Test 2: handler returns 400 when event has no "url" field
-with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
-     mock.patch.object(server, "updateWeighting", return_value="ok"):
-	environ = make_environ({"type": "trackAdded"})  # no url
+# Test 2: valid event — fetchTrack and updateWeighting are NOT called synchronously
+with mock.patch.object(server._event_queue, "put_nowait"), \
+     mock.patch.object(server, "fetchTrack") as mock_fetch, \
+     mock.patch.object(server, "updateWeighting") as mock_update:
+	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
+	run_request(environ)
+	test("fetchTrack not called synchronously on request path", not mock_fetch.called)
+	test("updateWeighting not called synchronously on request path", not mock_update.called)
+
+# Test 3: missing 'url' field in event returns 400
+with mock.patch.object(server._event_queue, "put_nowait"):
+	environ = make_environ({"type": "trackAdded"})  # no url field
 	status, body = run_request(environ)
 	test("missing url in event returns 400", status.startswith("400"))
 
-# Test 3: fetchTrack failure returns 500
+# Test 4: invalid JSON body returns 400
+bad_body = b"not valid json"
+bad_environ = {
+	"REQUEST_METHOD": "POST",
+	"PATH_INFO": "/weight-track",
+	"CONTENT_LENGTH": str(len(bad_body)),
+	"wsgi.input": io.BytesIO(bad_body),
+}
+status, body = run_request(bad_environ)
+test("invalid JSON body returns 400", status.startswith("400"))
+
+# Test 5: queue full returns 503
+with mock.patch.object(server._event_queue, "put_nowait", side_effect=queue.Full):
+	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
+	status, body = run_request(environ)
+	test("queue full returns 503", status.startswith("503"))
+
+# --- _process_event tests ---
+
+# Test 6: success path — fetchTrack called with event url, updateWeighting called with track
+server._last_weighting_update = 0
+with mock.patch.object(server, "fetchTrack", return_value=mock_track) as mock_fetch, \
+     mock.patch.object(server, "updateWeighting", return_value="Weighting changed to 3.5") as mock_update:
+	server._process_event({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
+	test("_process_event calls fetchTrack with event url",
+	     mock_fetch.call_args == mock.call("http://media.l42.eu/tracks/42"))
+	test("_process_event calls updateWeighting with fetched track",
+	     mock_update.call_args == mock.call(mock_track))
+	test("_process_event updates _last_weighting_update on success",
+	     server._last_weighting_update > 0)
+
+# Test 7: fetchTrack failure increments _processing_failures
+server._processing_failures = 0
 with mock.patch.object(server, "fetchTrack", side_effect=Exception("Connection failed")), \
      mock.patch.object(server, "updateWeighting", return_value="ok"):
-	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
-	status, body = run_request(environ)
-	test("fetchTrack failure returns 500", status.startswith("500"))
+	server._process_event({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
+	test("fetchTrack failure increments _processing_failures", server._processing_failures == 1)
 
-# Test 4: invalid JSON body returns 400
-with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
-     mock.patch.object(server, "updateWeighting", return_value="ok"):
-	bad_body = b"not valid json"
-	bad_environ = {
-		"REQUEST_METHOD": "POST",
-		"PATH_INFO": "/weight-track",
-		"CONTENT_LENGTH": str(len(bad_body)),
-		"wsgi.input": io.BytesIO(bad_body),
-	}
-	status, body = run_request(bad_environ)
-	test("invalid JSON body returns 400", status.startswith("400"))
-
-# Test 5: updateWeighting failure returns 500
+# Test 8: updateWeighting failure increments _processing_failures
+server._processing_failures = 0
 with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
      mock.patch.object(server, "updateWeighting", side_effect=Exception("API error")):
-	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
-	status, body = run_request(environ)
-	test("updateWeighting failure returns 500", status.startswith("500"))
+	server._process_event({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
+	test("updateWeighting failure increments _processing_failures", server._processing_failures == 1)
 
-# Test 6: fetchTrack raising ValueError (e.g. untrusted URL) returns 400
+# Test 9: ValueError from fetchTrack (disallowed URL) increments _processing_failures
+server._processing_failures = 0
 with mock.patch.object(server, "fetchTrack", side_effect=ValueError("URL must start with configured API")), \
      mock.patch.object(server, "updateWeighting", return_value="ok"):
-	environ = make_environ({"type": "trackAdded", "url": "http://evil.example.com/tracks/42"})
-	status, body = run_request(environ)
-	test("disallowed URL (ValueError from fetchTrack) returns 400", status.startswith("400"))
+	server._process_event({"type": "trackAdded", "url": "http://evil.example.com/tracks/42"})
+	test("ValueError from fetchTrack increments _processing_failures", server._processing_failures == 1)
 
-# Test 7: access log includes status code and response time on a successful POST
-with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
-     mock.patch.object(server, "updateWeighting", return_value="ok"), \
+# --- Access log tests ---
+
+# Test 10: access log includes status code and response time on a successful POST
+with mock.patch.object(server._event_queue, "put_nowait"), \
      mock.patch.object(server, "info") as mock_info:
 	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
 	run_request(environ)
-	# The access log call is the one that includes the path
 	log_lines = [call[0][0] for call in mock_info.call_args_list]
 	access_log = next((l for l in log_lines if "/weight-track" in l), "")
-	test("access log includes status code", "200" in access_log)
+	test("access log includes 202 status code", "202" in access_log)
 	test("access log includes response time in ms", "ms" in access_log)
 
-# Test 8: /_info access log uses debug level, not info level
+# Test 11: /_info access log uses debug level, not info level
 with mock.patch.object(server, "debug") as mock_debug, \
      mock.patch.object(server, "info") as mock_info, \
      mock.patch.object(server, "probe_upstreams", return_value={}):
@@ -153,7 +180,7 @@ with mock.patch.object(server, "debug") as mock_debug, \
 	test("/_info access log uses debug level", "/_info" in access_debug)
 	test("/_info access log does not use info level", access_info == "")
 
-total = 13  # individual assertions across 8 test blocks
+total = 18  # individual assertions across 11 test blocks
 if failures > 0:
 	print(f"\033[91m{failures} failures\033[0m in {total} assertions.")
 	sys.exit(1)

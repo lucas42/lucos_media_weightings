@@ -1,5 +1,5 @@
 #! /usr/local/bin/python3
-import json, sys, os, time, traceback
+import json, sys, os, time, traceback, queue, threading
 from media_api import updateWeighting, fetchTrack
 from waitress import serve
 
@@ -10,9 +10,18 @@ from log_util import info, warn, error, debug
 # grepped without trawling the full access log.  Format: "SLOW: POST /weight-track 200 1234ms"
 SLOW_RESPONSE_THRESHOLD_MS = 1000
 
-# Unix timestamp of the last successful weighting update via /weight-track.
+# Unix timestamp of the last successful weighting update via the background worker.
 # 0 means no successful update has happened since the process started.
 _last_weighting_update = 0
+
+# Total number of events that failed processing in the background worker since
+# process start.  Non-zero means at least one accepted event was not processed.
+_processing_failures = 0
+
+# Bounded in-memory queue for async event processing.  A maxsize of 500 gives
+# ~25 minutes of backlog capacity at the observed ~3s/event drain rate, which
+# is comfortably above the largest burst we've seen (177 events, 2026-05-22).
+_event_queue = queue.Queue(maxsize=500)
 
 if not os.environ.get("PORT"):
 	error("PORT not set")
@@ -45,7 +54,7 @@ def app(environ, start_response):
 	"""WSGI entry point.
 
 	Access log format: METHOD /path STATUS_CODE Xms
-	  e.g.  POST /weight-track 200 42ms
+	  e.g.  POST /weight-track 202 1ms
 
 	Lines at or above SLOW_RESPONSE_THRESHOLD_MS are prefixed "SLOW: " and
 	emitted at WARN level so they can be grepped without scanning the full log.
@@ -80,10 +89,27 @@ def app(environ, start_response):
 	return result
 
 def info_controller(start_response):
+	checks = probe_upstreams()
+	checks["event-queue"] = {
+		"techDetail": (
+			"Background worker queue for async webhook processing. "
+			"ok=True when no processing failures have occurred since process start. "
+			"See 'processing-failures' metric for the running count."
+		),
+		"ok": (_processing_failures == 0),
+	}
 	metrics = {
 		"last-weighting-update": {
 			"value": _last_weighting_update,
-			"techDetail": "Unix timestamp (seconds) of the most recent successful /weight-track call since this process started. 0 means none yet — fresh boots will read 0 until the first webhook fires.",
+			"techDetail": "Unix timestamp (seconds) of the most recent successful weighting update by the background worker since this process started. 0 means none yet — fresh boots will read 0 until the first webhook fires.",
+		},
+		"queue-depth": {
+			"value": _event_queue.qsize(),
+			"techDetail": "Current number of events waiting in the internal queue for background processing. Non-zero during normal drain; sustained growth indicates the worker is falling behind.",
+		},
+		"processing-failures": {
+			"value": _processing_failures,
+			"techDetail": "Total number of events that the background worker failed to process (fetchTrack or updateWeighting raised an exception) since process start. Non-zero means at least one accepted event was not successfully processed.",
 		},
 	}
 	output = {
@@ -91,7 +117,7 @@ def info_controller(start_response):
 		"ci": {
 			"circle": "gh/lucas42/lucos_media_weightings",
 		},
-		"checks": probe_upstreams(),
+		"checks": checks,
 		"metrics": metrics,
 		"network_only": True,
 		"show_on_homepage": False,
@@ -101,6 +127,15 @@ def info_controller(start_response):
 	return [body]
 
 def weight_track_controller(environ, start_response):
+	"""Accept a webhook event for background processing.
+
+	Validates auth and parses the JSON body synchronously, then immediately
+	enqueues the event and returns 202 Accepted.  The actual work
+	(fetchTrack + updateWeighting) happens in the background worker thread.
+
+	This is the accept-202-enqueue pattern from ADR-0006.  The receive path
+	is O(parse + enqueue) — sub-millisecond — regardless of downstream latency.
+	"""
 	if not is_authorised(environ):
 		start_response("401 Unauthorized", [("Content-Type", "text/plain"), ("WWW-Authenticate", "Bearer")])
 		return [b"Invalid API Key"]
@@ -115,21 +150,41 @@ def weight_track_controller(environ, start_response):
 		start_response("400 Bad Request", [("Content-Type", "text/plain")])
 		return [b"Missing 'url' field in event"]
 	try:
+		_event_queue.put_nowait(event)
+	except queue.Full:
+		warn(f"Event queue full (depth={_event_queue.qsize()}), dropping event for {event.get('url', '?')}")
+		start_response("503 Service Unavailable", [("Content-Type", "text/plain")])
+		return [b"Queue full, retry later"]
+	start_response("202 Accepted", [("Content-Type", "text/plain")])
+	return [b"Accepted"]
+
+def _process_event(event):
+	"""Process a single queued event: fetch the current track state then update its weighting.
+
+	Called by the background worker thread.  Updates _last_weighting_update on
+	success and increments _processing_failures on any exception, so both are
+	visible via /_info.
+	"""
+	global _last_weighting_update, _processing_failures
+	try:
 		track = fetchTrack(event["url"])
 		response = updateWeighting(track)
-		global _last_weighting_update
 		_last_weighting_update = int(time.time())
-		start_response("200 OK", [("Content-Type", "text/plain")])
-		return [bytes(response, "utf-8")]
-	except ValueError as err:
-		start_response("400 Bad Request", [("Content-Type", "text/plain")])
-		return [bytes(str(err), "utf-8")]
+		info(f"Processed weighting update for {event['url']}: {response}")
 	except Exception as err:
 		traceback.print_exc()
-		error(f"Error updating weighting: {str(err)}")
-		start_response("500 Internal Server Error", [("Content-Type", "text/plain")])
-		return [bytes(str(err), "utf-8")]
+		error(f"Error processing event for {event.get('url', '?')}: {str(err)}")
+		_processing_failures += 1
+
+def _worker():
+	"""Background daemon thread that drains _event_queue one event at a time."""
+	while True:
+		event = _event_queue.get()
+		_process_event(event)
+		_event_queue.task_done()
 
 if __name__ == "__main__":
+	t = threading.Thread(target=_worker, daemon=True, name="event-queue-worker")
+	t.start()
 	info("Server started on port %s" % (port))
 	serve(app, host="0.0.0.0", port=port)
