@@ -129,15 +129,18 @@ with mock.patch.object(server, "fetchTrack", return_value=mock_track) as mock_fe
 	test("_process_event updates _last_weighting_update on success",
 	     server._last_weighting_update > 0)
 
-# Test 7: fetchTrack failure increments _processing_failures
+# Test 7: fetchTrack failure increments _processing_failures and records _last_processing_failure_at
 server._processing_failures = 0
+server._last_processing_failure_at = 0
 with mock.patch.object(server, "fetchTrack", side_effect=Exception("Connection failed")), \
      mock.patch.object(server, "updateWeighting", return_value="ok"):
 	server._process_event({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
 	test("fetchTrack failure increments _processing_failures", server._processing_failures == 1)
+	test("fetchTrack failure sets _last_processing_failure_at", server._last_processing_failure_at > 0)
 
 # Test 8: updateWeighting failure increments _processing_failures
 server._processing_failures = 0
+server._last_processing_failure_at = 0
 with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
      mock.patch.object(server, "updateWeighting", side_effect=Exception("API error")):
 	server._process_event({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
@@ -145,10 +148,47 @@ with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
 
 # Test 9: ValueError from fetchTrack (disallowed URL) increments _processing_failures
 server._processing_failures = 0
+server._last_processing_failure_at = 0
 with mock.patch.object(server, "fetchTrack", side_effect=ValueError("URL must start with configured API")), \
      mock.patch.object(server, "updateWeighting", return_value="ok"):
 	server._process_event({"type": "trackAdded", "url": "http://evil.example.com/tracks/42"})
 	test("ValueError from fetchTrack increments _processing_failures", server._processing_failures == 1)
+
+# Test 9b: event-queue check self-heals after failure once a success occurs
+# Simulate: failure happened at t=1000, then success at t=1001 → check should be ok
+server._processing_failures = 1
+server._last_processing_failure_at = 1000
+server._last_weighting_update = 1001
+with mock.patch.object(server, "probe_upstreams", return_value={}), \
+     mock.patch.object(server, "debug"):
+	info_environ = {
+		"REQUEST_METHOD": "GET",
+		"PATH_INFO": "/_info",
+		"CONTENT_LENGTH": "0",
+		"wsgi.input": io.BytesIO(b""),
+	}
+	status_holder = [None]
+	def sr(status, headers): status_holder[0] = status
+	raw = b"".join(server.app(info_environ, sr))
+	import json as _json
+	info_data = _json.loads(raw)
+	test("event-queue check ok=True when success followed failure",
+	     info_data["checks"].get("event-queue", {}).get("ok") is True)
+
+# And it goes unhealthy when last event was a failure
+server._processing_failures = 1
+server._last_processing_failure_at = 1002
+server._last_weighting_update = 1000  # success predates failure
+with mock.patch.object(server, "probe_upstreams", return_value={}), \
+     mock.patch.object(server, "debug"):
+	raw = b"".join(server.app(info_environ, sr))
+	info_data = _json.loads(raw)
+	test("event-queue check ok=False when last event was a failure",
+	     info_data["checks"].get("event-queue", {}).get("ok") is False)
+
+# Reset to sane state for remaining tests
+server._processing_failures = 0
+server._last_processing_failure_at = 0
 
 # --- Access log tests ---
 
@@ -180,7 +220,7 @@ with mock.patch.object(server, "debug") as mock_debug, \
 	test("/_info access log uses debug level", "/_info" in access_debug)
 	test("/_info access log does not use info level", access_info == "")
 
-total = 18  # individual assertions across 11 test blocks
+total = 22  # individual assertions across 13 test blocks
 if failures > 0:
 	print(f"\033[91m{failures} failures\033[0m in {total} assertions.")
 	sys.exit(1)

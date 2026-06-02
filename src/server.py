@@ -18,6 +18,12 @@ _last_weighting_update = 0
 # process start.  Non-zero means at least one accepted event was not processed.
 _processing_failures = 0
 
+# Unix timestamp of the most recent processing failure.  0 means no failure has
+# occurred since the process started.  Used by the event-queue check to recover
+# automatically once processing resumes successfully after a failure — compare
+# against _last_weighting_update (see info_controller).
+_last_processing_failure_at = 0
+
 # Bounded in-memory queue for async event processing.  A maxsize of 500 gives
 # ~25 minutes of backlog capacity at the observed ~3s/event drain rate, which
 # is comfortably above the largest burst we've seen (177 events, 2026-05-22).
@@ -90,13 +96,23 @@ def app(environ, start_response):
 
 def info_controller(start_response):
 	checks = probe_upstreams()
+	# ok=True when no failure has ever occurred, OR when the most recent
+	# successful event was processed after the most recent failure — i.e. the
+	# queue is currently draining successfully.  Recovers automatically once
+	# processing resumes; does not require a process restart to clear.
+	queue_ok = (
+		_last_processing_failure_at == 0
+		or _last_weighting_update > _last_processing_failure_at
+	)
 	checks["event-queue"] = {
 		"techDetail": (
 			"Background worker queue for async webhook processing. "
-			"ok=True when no processing failures have occurred since process start. "
+			"ok=True when no processing failures have occurred since process start, "
+			"or when the most recently completed event succeeded after the most recent failure. "
+			"Recovers automatically once processing resumes — no restart required. "
 			"See 'processing-failures' metric for the running count."
 		),
-		"ok": (_processing_failures == 0),
+		"ok": queue_ok,
 	}
 	metrics = {
 		"last-weighting-update": {
@@ -162,10 +178,11 @@ def _process_event(event):
 	"""Process a single queued event: fetch the current track state then update its weighting.
 
 	Called by the background worker thread.  Updates _last_weighting_update on
-	success and increments _processing_failures on any exception, so both are
-	visible via /_info.
+	success; increments _processing_failures and records _last_processing_failure_at
+	on any exception, so the event-queue check in /_info can self-heal once
+	processing resumes successfully.
 	"""
-	global _last_weighting_update, _processing_failures
+	global _last_weighting_update, _processing_failures, _last_processing_failure_at
 	try:
 		track = fetchTrack(event["url"])
 		response = updateWeighting(track)
@@ -175,6 +192,7 @@ def _process_event(event):
 		traceback.print_exc()
 		error(f"Error processing event for {event.get('url', '?')}: {str(err)}")
 		_processing_failures += 1
+		_last_processing_failure_at = int(time.time())
 
 def _worker():
 	"""Background daemon thread that drains _event_queue one event at a time."""
