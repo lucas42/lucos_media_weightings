@@ -1,15 +1,19 @@
 #! /usr/bin/env python3
-"""Unit tests for weight_track_controller in server.py.
+"""Unit tests for weight_track_controller, _process_event, and /_info checks in server.py.
 
-Tests that the handler re-fetches track data from the event URL rather
-than reading it directly from the event payload.
+The webhook handler follows the accept-202-enqueue pattern (ADR-0006):
+- HTTP path: validate auth + parse JSON, enqueue event, return 202 immediately.
+- Background worker: calls _process_event per event (fetchTrack + updateWeighting).
+- /_info: worker-alive and drain-liveness checks surface queue health to monitoring.
 
 Run from src/ directory: python3 test_webhook.py
 """
 import io
-import json
+import json as _json
 import os
+import queue
 import sys
+import time
 import types
 import unittest.mock as mock
 
@@ -39,7 +43,7 @@ failures = 0
 
 def make_environ(body_dict):
 	"""Build a minimal WSGI environ for a POST /weight-track request."""
-	body = json.dumps(body_dict).encode("utf-8")
+	body = _json.dumps(body_dict).encode("utf-8")
 	return {
 		"REQUEST_METHOD": "POST",
 		"PATH_INFO": "/weight-track",
@@ -54,6 +58,17 @@ def run_request(environ):
 		status_holder[0] = status
 	body = b"".join(server.app(environ, start_response))
 	return status_holder[0], body.decode("utf-8")
+
+def run_info():
+	"""Run a GET /_info request and return the parsed JSON body."""
+	environ = {
+		"REQUEST_METHOD": "GET",
+		"PATH_INFO": "/_info",
+		"CONTENT_LENGTH": "0",
+		"wsgi.input": io.BytesIO(b""),
+	}
+	_, body = run_request(environ)
+	return _json.loads(body)
 
 def test(comment, passed):
 	global failures
@@ -70,72 +85,170 @@ mock_track = {
 	"collections": [],
 }
 
-# Test 1: handler fetches track from event["url"] and passes it to updateWeighting
-with mock.patch.object(server, "fetchTrack", return_value=mock_track) as mock_fetch, \
-     mock.patch.object(server, "updateWeighting", return_value="Weighting changed to 3.5") as mock_update:
+# --- HTTP-layer tests: enqueue and return 202 ---
+
+# Test 1: valid event returns 202 and event is enqueued
+with mock.patch.object(server._event_queue, "put_nowait") as mock_put:
 	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
 	status, body = run_request(environ)
-	test("returns 200 on success", status.startswith("200"))
-	test("fetchTrack called with event url",
-	     mock_fetch.call_args == mock.call("http://media.l42.eu/tracks/42"))
-	test("updateWeighting called with fetched track",
-	     mock_update.call_args == mock.call(mock_track))
-	test("response body contains update message", "Weighting changed to 3.5" in body)
+	test("returns 202 Accepted on valid event", status.startswith("202"))
+	test("event enqueued with correct url",
+	     mock_put.call_args == mock.call({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"}))
 
-# Test 2: handler returns 400 when event has no "url" field
-with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
-     mock.patch.object(server, "updateWeighting", return_value="ok"):
-	environ = make_environ({"type": "trackAdded"})  # no url
+# Test 2: valid event — fetchTrack and updateWeighting are NOT called synchronously
+with mock.patch.object(server._event_queue, "put_nowait"), \
+     mock.patch.object(server, "fetchTrack") as mock_fetch, \
+     mock.patch.object(server, "updateWeighting") as mock_update:
+	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
+	run_request(environ)
+	test("fetchTrack not called synchronously on request path", not mock_fetch.called)
+	test("updateWeighting not called synchronously on request path", not mock_update.called)
+
+# Test 3: missing 'url' field in event returns 400
+with mock.patch.object(server._event_queue, "put_nowait"):
+	environ = make_environ({"type": "trackAdded"})  # no url field
 	status, body = run_request(environ)
 	test("missing url in event returns 400", status.startswith("400"))
 
-# Test 3: fetchTrack failure returns 500
+# Test 4: invalid JSON body returns 400
+bad_body = b"not valid json"
+bad_environ = {
+	"REQUEST_METHOD": "POST",
+	"PATH_INFO": "/weight-track",
+	"CONTENT_LENGTH": str(len(bad_body)),
+	"wsgi.input": io.BytesIO(bad_body),
+}
+status, body = run_request(bad_environ)
+test("invalid JSON body returns 400", status.startswith("400"))
+
+# Test 5: queue full returns 503
+with mock.patch.object(server._event_queue, "put_nowait", side_effect=queue.Full):
+	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
+	status, body = run_request(environ)
+	test("queue full returns 503", status.startswith("503"))
+
+# --- _process_event tests ---
+
+# Test 6: success path — fetchTrack called with event url, updateWeighting called with track
+server._last_weighting_update = 0
+with mock.patch.object(server, "fetchTrack", return_value=mock_track) as mock_fetch, \
+     mock.patch.object(server, "updateWeighting", return_value="Weighting changed to 3.5") as mock_update:
+	server._process_event({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
+	test("_process_event calls fetchTrack with event url",
+	     mock_fetch.call_args == mock.call("http://media.l42.eu/tracks/42"))
+	test("_process_event calls updateWeighting with fetched track",
+	     mock_update.call_args == mock.call(mock_track))
+	test("_process_event updates _last_weighting_update on success",
+	     server._last_weighting_update > 0)
+
+# Test 7: fetchTrack failure increments _processing_failures
+server._processing_failures = 0
 with mock.patch.object(server, "fetchTrack", side_effect=Exception("Connection failed")), \
      mock.patch.object(server, "updateWeighting", return_value="ok"):
-	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
-	status, body = run_request(environ)
-	test("fetchTrack failure returns 500", status.startswith("500"))
+	server._process_event({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
+	test("fetchTrack failure increments _processing_failures", server._processing_failures == 1)
 
-# Test 4: invalid JSON body returns 400
-with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
-     mock.patch.object(server, "updateWeighting", return_value="ok"):
-	bad_body = b"not valid json"
-	bad_environ = {
-		"REQUEST_METHOD": "POST",
-		"PATH_INFO": "/weight-track",
-		"CONTENT_LENGTH": str(len(bad_body)),
-		"wsgi.input": io.BytesIO(bad_body),
-	}
-	status, body = run_request(bad_environ)
-	test("invalid JSON body returns 400", status.startswith("400"))
-
-# Test 5: updateWeighting failure returns 500
+# Test 8: updateWeighting failure increments _processing_failures
+server._processing_failures = 0
 with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
      mock.patch.object(server, "updateWeighting", side_effect=Exception("API error")):
-	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
-	status, body = run_request(environ)
-	test("updateWeighting failure returns 500", status.startswith("500"))
+	server._process_event({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
+	test("updateWeighting failure increments _processing_failures", server._processing_failures == 1)
 
-# Test 6: fetchTrack raising ValueError (e.g. untrusted URL) returns 400
+# Test 9: ValueError from fetchTrack (disallowed URL) increments _processing_failures
+server._processing_failures = 0
 with mock.patch.object(server, "fetchTrack", side_effect=ValueError("URL must start with configured API")), \
      mock.patch.object(server, "updateWeighting", return_value="ok"):
-	environ = make_environ({"type": "trackAdded", "url": "http://evil.example.com/tracks/42"})
-	status, body = run_request(environ)
-	test("disallowed URL (ValueError from fetchTrack) returns 400", status.startswith("400"))
+	server._process_event({"type": "trackAdded", "url": "http://evil.example.com/tracks/42"})
+	test("ValueError from fetchTrack increments _processing_failures", server._processing_failures == 1)
 
-# Test 7: access log includes status code and response time on a successful POST
-with mock.patch.object(server, "fetchTrack", return_value=mock_track), \
-     mock.patch.object(server, "updateWeighting", return_value="ok"), \
+# --- /_info check tests: drain-liveness and worker-alive ---
+
+# Shared helper: run /_info with probe_upstreams stubbed out and a mock worker thread.
+def _run_info_with(*, qsize, last_success, process_start, worker_alive=True):
+	mock_thread = mock.MagicMock()
+	mock_thread.is_alive.return_value = worker_alive
+	orig_process_start = server._process_start_time
+	orig_last_success = server._last_weighting_update
+	server._process_start_time = process_start
+	server._last_weighting_update = last_success
+	try:
+		with mock.patch.object(server, "_worker_thread", mock_thread), \
+		     mock.patch.object(server._event_queue, "qsize", return_value=qsize), \
+		     mock.patch.object(server, "probe_upstreams", return_value={}), \
+		     mock.patch.object(server, "debug"):
+			return run_info()
+	finally:
+		server._process_start_time = orig_process_start
+		server._last_weighting_update = orig_last_success
+
+now = time.time()
+
+# Test 10: drain-liveness ok=False when queue non-empty and stale
+data = _run_info_with(
+	qsize=5,
+	last_success=0,  # no success yet
+	process_start=now - (server.DRAIN_LIVENESS_THRESHOLD_SECONDS + 60),  # well past threshold
+)
+test("drain-liveness ok=False when queue non-empty and stale",
+     data["checks"]["drain-liveness"]["ok"] is False)
+
+# Test 11: drain-liveness ok=True when queue empty (even if stale — no backlog to drain)
+data = _run_info_with(
+	qsize=0,
+	last_success=0,
+	process_start=now - (server.DRAIN_LIVENESS_THRESHOLD_SECONDS + 60),
+)
+test("drain-liveness ok=True when queue empty",
+     data["checks"]["drain-liveness"]["ok"] is True)
+
+# Test 12: drain-liveness ok=True when queue non-empty but recent success (active drain)
+data = _run_info_with(
+	qsize=10,
+	last_success=int(now) - 5,  # success 5 seconds ago, well within threshold
+	process_start=now - 300,
+)
+test("drain-liveness ok=True when queue non-empty but success is recent",
+     data["checks"]["drain-liveness"]["ok"] is True)
+
+# Test 13: drain-liveness ok=True within fresh-boot window even with no success yet
+data = _run_info_with(
+	qsize=5,
+	last_success=0,  # no success yet
+	process_start=now - 10,  # only 10s old — within threshold
+)
+test("drain-liveness ok=True within fresh-boot window (process_start used as reference)",
+     data["checks"]["drain-liveness"]["ok"] is True)
+
+# Test 14: worker-alive ok=True when thread is alive
+data = _run_info_with(qsize=0, last_success=0, process_start=now, worker_alive=True)
+test("worker-alive ok=True when thread is alive",
+     data["checks"]["worker-alive"]["ok"] is True)
+
+# Test 15: worker-alive ok=False when _worker_thread is None
+orig_thread = server._worker_thread
+server._worker_thread = None
+with mock.patch.object(server._event_queue, "qsize", return_value=0), \
+     mock.patch.object(server, "probe_upstreams", return_value={}), \
+     mock.patch.object(server, "debug"):
+	data = run_info()
+test("worker-alive ok=False when _worker_thread is None",
+     data["checks"]["worker-alive"]["ok"] is False)
+server._worker_thread = orig_thread
+
+# --- Access log tests ---
+
+# Test 16: access log includes status code and response time on a successful POST
+with mock.patch.object(server._event_queue, "put_nowait"), \
      mock.patch.object(server, "info") as mock_info:
 	environ = make_environ({"type": "trackAdded", "url": "http://media.l42.eu/tracks/42"})
 	run_request(environ)
-	# The access log call is the one that includes the path
 	log_lines = [call[0][0] for call in mock_info.call_args_list]
 	access_log = next((l for l in log_lines if "/weight-track" in l), "")
-	test("access log includes status code", "200" in access_log)
+	test("access log includes 202 status code", "202" in access_log)
 	test("access log includes response time in ms", "ms" in access_log)
 
-# Test 8: /_info access log uses debug level, not info level
+# Test 17: /_info access log uses debug level, not info level
 with mock.patch.object(server, "debug") as mock_debug, \
      mock.patch.object(server, "info") as mock_info, \
      mock.patch.object(server, "probe_upstreams", return_value={}):
@@ -153,7 +266,7 @@ with mock.patch.object(server, "debug") as mock_debug, \
 	test("/_info access log uses debug level", "/_info" in access_debug)
 	test("/_info access log does not use info level", access_info == "")
 
-total = 13  # individual assertions across 8 test blocks
+total = 24  # individual assertions across 17 test blocks
 if failures > 0:
 	print(f"\033[91m{failures} failures\033[0m in {total} assertions.")
 	sys.exit(1)
