@@ -2,8 +2,8 @@
 # Run the full test suite. All test files live in src/.
 set -e
 cd "$(dirname "$0")/src"
-python3 test_logic.py
-python3 test_auth.py
-python3 test_webhook.py
-python3 test_media_api.py
-python3 test_all_tracks.py
+pipenv run python3 test_logic.py
+pipenv run python3 test_auth.py
+pipenv run python3 test_webhook.py
+pipenv run python3 test_media_api.py
+pipenv run python3 test_all_tracks.py
