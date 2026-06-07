@@ -1,0 +1,1 @@
+10 2 * * * pipenv run python -u /home/jobrunner/all-tracks.py
