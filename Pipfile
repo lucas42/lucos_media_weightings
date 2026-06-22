@@ -5,8 +5,8 @@ name = "pypi"
 
 [packages]
 requests = "*"
-lucos-schedule-tracker-pythonclient = ">=2.0.3"
+lucos-schedule-tracker-pythonclient = ">=2.0.4"
 waitress = "*"
-lucos-loganne-pythonclient = ">=2.0.2"
+lucos-loganne-pythonclient = ">=2.0.3"
 
 [dev-packages]
